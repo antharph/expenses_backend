@@ -1,0 +1,22 @@
+{
+  "mcpServers": {
+    "laravel": {
+      "type": "stdio",
+      "command": "/usr/local/bin/docker",
+      "args": [
+        "exec",
+        "-i",
+        "codev_php8.4-webserver-4",
+        "php",
+        "-d",
+        "display_errors=0",
+        "/var/www/expenses/artisan",
+        "boost:mcp"
+      ],
+      "env": {
+        "APP_ENV": "local",
+        "APP_DEBUG": "true"
+      }
+    }
+  }
+}

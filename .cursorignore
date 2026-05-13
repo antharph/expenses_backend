@@ -1,0 +1,42 @@
+# Dependencies (large, vendor code)
+/vendor/
+/node_modules/
+
+# Secrets and local env
+.env
+.env.*
+!.env.example
+auth.json
+
+# Laravel runtime / cache
+/bootstrap/cache/
+/bootstrap/ssr/
+/storage/*.key
+/storage/logs/
+/storage/framework/cache/
+/storage/framework/sessions/
+/storage/framework/views/
+/storage/pail/
+
+# Public build artifacts
+/public/build/
+/public/hot
+/public/storage
+/public/fonts-manifest.dev.json
+
+# Generated Wayfinder / frontend route glue (regenerated from PHP routes)
+/resources/js/actions/
+/resources/js/routes/
+/resources/js/wayfinder/
+
+# PHPUnit / tooling caches
+/.phpunit.cache
+.phpunit.result.cache
+
+# OS / IDE noise (optional local files)
+.DS_Store
+/.fleet/
+/.idea/
+/.nova/
+/.vscode/
+/.zed/
