@@ -1,0 +1,25 @@
+---
+description: Keep HTTP API documentation in docs/api in sync with Laravel /api routes
+globs: routes/api.php,app/Http/Controllers/Api/**/*.php,docs/api/**/*.md
+alwaysApply: false
+---
+
+# API documentation (`docs/api`)
+
+## When to update docs
+
+Whenever you **add, change, or remove** an endpoint under the `/api` prefix (controllers in `app/Http/Controllers/Api/`, routes in `routes/api.php`), update the Markdown in **`docs/api/`** in the same change (or immediately after).
+
+## What to include per endpoint
+
+- **Method and full path** (including version segment, e.g. `/api/v1/...`).
+- **Authentication** (public vs `Authorization: Bearer` Sanctum token).
+- **Request** body (JSON fields, validation rules in plain language).
+- **Success response** shape and typical **HTTP status codes**.
+- **Error responses** (422 validation, 401 unauthenticated, 429 throttled if applicable).
+
+## Conventions
+
+- Prefer **one topic per file** when the surface grows (e.g. `docs/api/authentication.md`, `docs/api/README.md` as an index).
+- Keep examples copy-paste friendly: real paths, realistic JSON, no secrets or real tokens.
+- If request/response contracts are generated elsewhere, still link or summarize here so mobile clients have a single human-readable index.

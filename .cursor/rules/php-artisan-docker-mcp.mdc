@@ -1,0 +1,30 @@
+---
+description: Run php artisan via Docker; prefer Laravel MCP instead of host shell when possible
+alwaysApply: true
+---
+
+# `php artisan` and Docker / MCP
+
+This app runs in Docker. **Do not** run `php artisan` on the host machine via the terminal unless you have confirmed PHP and paths match the container (they usually do not).
+
+## Prefer Laravel MCP first
+
+When the goal is **inspection or debugging** (schema, DB, logs, URLs, docs search, application info), use the **`project-0-expenses-laravel`** MCP server tools via `call_mcp_tool` instead of Artisan commands such as `db:show`, `migrate:status`, or tailing logs—**read each tool’s schema** under the MCP descriptors before calling.
+
+## When you must run Artisan CLI
+
+For commands that **only** exist as Artisan (for example `migrate`, `make:*`, `route:list`, custom commands), execute PHP **inside the same Docker container** the project uses for Laravel MCP.
+
+1. Open **`.cursor/mcp.json`** and use the `docker exec` target from the `laravel` MCP server: container name, and the absolute path to `artisan` inside the container.
+2. Run the equivalent command, for example:
+
+```bash
+docker exec -i <container-from-mcp.json> php -d display_errors=0 <artisan-path-from-mcp.json> <artisan-args...>
+```
+
+Match flags (`-i`, `php` args) to what is configured there so behavior stays consistent with the MCP-backed environment.
+
+## Anti-patterns
+
+- `php artisan ...` in the workspace shell when the stack is Docker-only.
+- Guessing container names or paths instead of reading `.cursor/mcp.json`.

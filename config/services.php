@@ -35,4 +35,17 @@ return [
         ],
     ],
 
+    /*
+    |--------------------------------------------------------------------------
+    | Firebase (Google Sign-In via Firebase Auth ID tokens)
+    |--------------------------------------------------------------------------
+    |
+    | Must match the Firebase project used by the Flutter app. Used to verify
+    | ID tokens from Firebase Auth (issuer https://securetoken.google.com/...).
+    |
+    */
+    'firebase' => [
+        'project_id' => env('FIREBASE_PROJECT_ID'),
+    ],
+
 ];
