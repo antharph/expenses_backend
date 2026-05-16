@@ -123,4 +123,16 @@ return [
         'store' => env('APP_MAINTENANCE_STORE', 'database'),
     ],
 
+    /*
+    |--------------------------------------------------------------------------
+    | API pagination (per page)
+    |--------------------------------------------------------------------------
+    |
+    | Used by paginated JSON endpoints such as GET /api/v1/expenses. Override
+    | with PAGINATION_PER_PAGE in your environment file.
+    |
+    */
+
+    'pagination_per_page' => max(1, min(100, (int) env('PAGINATION_PER_PAGE', 15))),
+
 ];
