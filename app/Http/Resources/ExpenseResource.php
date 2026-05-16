@@ -26,8 +26,19 @@ class ExpenseResource extends JsonResource
                     'name' => $this->category->name,
                 ],
             ),
-            'date' => $this->created_at?->toIso8601String(),
+            'date' => $this->formattedExpenseDate(),
             'receipt_url' => null,
         ];
+    }
+
+    private function formattedExpenseDate(): ?string
+    {
+        if ($this->created_at === null) {
+            return null;
+        }
+
+        $tz = (string) config('app.expenses_display_timezone', 'UTC');
+
+        return $this->created_at->copy()->timezone($tz)->format('n/j');
     }
 }

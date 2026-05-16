@@ -28,7 +28,7 @@ Each expense object:
 | `price` | string (decimal) | Amount with two decimal places. |
 | `category_id` | integer or `null` | Optional foreign key to `categories.id`. |
 | `category` | object or omitted | When the category relation is loaded and set: `id`, `code`, `name`. Omitted when uncategorized or not loaded. |
-| `date` | string (ISO 8601) | Created timestamp (UTC). |
+| `date` | string | Created instant formatted as **`M/D`** (`n/j`), using **`DEFAULT_TIMEZONE`** from the API `.env` (stored in UTC in the database). Examples: `3/9`, `12/31`. |
 | `receipt_url` | `null` | Receipt images are not stored; this field is reserved for clients and remains null. |
 
 ### Errors

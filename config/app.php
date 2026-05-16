@@ -135,4 +135,16 @@ return [
 
     'pagination_per_page' => max(1, min(100, (int) env('PAGINATION_PER_PAGE', 15))),
 
+    /*
+    |--------------------------------------------------------------------------
+    | Expense API date display timezone
+    |--------------------------------------------------------------------------
+    |
+    | Timestamps are stored in UTC; responses format the expense "date" field
+    | in month/day order (no leading zeros) in this timezone. Set via DEFAULT_TIMEZONE.
+    |
+    */
+
+    'expenses_display_timezone' => env('DEFAULT_TIMEZONE', 'UTC'),
+
 ];
