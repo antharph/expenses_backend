@@ -4,6 +4,7 @@ namespace App\Services;
 
 use App\Exceptions\ReceiptInterpretationException;
 use App\Models\Category;
+use App\Support\ExpenseAmounts;
 use Illuminate\Http\Client\Response;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Http;
@@ -18,10 +19,10 @@ class GeminiReceiptInterpreter
 
     /**
      * Read a receipt image once (in memory / temp upload path) and return one or more
-     * expense rows (item, price, optional category_id from the allowed list).
+     * expense rows with reconciled quantity, unit price, and line total.
      *
      * @param  iterable<int, Category|array{id:int|string, name:string}>  $categories
-     * @return list<array{item: string, price: string, category_id: int|null}>
+     * @return list<array{item: string, quantity: int, price: string, total: string, category_id: int|null}>
      */
     public function interpret(UploadedFile $file, iterable $categories = []): array
     {
@@ -60,22 +61,50 @@ You are parsing a purchase receipt or invoice image for an expense tracker.
 
 You will be given a JSON array of allowed categories. Each element has only "id" (integer) and "name" (string). You MUST NOT invent category ids: every category_id you output must either be null or exactly match one of the provided ids.
 
+For every expense row (top-level summary and each line item), extract or infer:
+- "quantity": integer count of units (minimum 1). Use 1 when the receipt shows a single unit or only a line total with no count.
+- "price": unit price per item (before tax on that line, when shown). Numbers only, no currency symbol.
+- "total": line extension amount for that row. Numbers only, no currency symbol.
+
+These three fields MUST be mathematically consistent: total = quantity × price, rounded to two decimal places. When the receipt shows only one or two of them, compute the missing value(s) before you respond. Examples:
+- Qty 3 @ \$4.50 each → quantity 3, price 4.50, total 13.50
+- Qty 2, line total \$10.00, no unit price → quantity 2, price 5.00, total 10.00
+- Line total \$12.99 only → quantity 1, price 12.99, total 12.99
+
 Return a JSON object with:
 - "item": short summary of the whole purchase (merchant + scope), max ~200 characters.
-- "price": numeric total amount to pay for the receipt in the primary currency (no currency symbol, decimal point).
+- "quantity", "price", "total": for the overall receipt when there is no per-line breakdown (see line_items rule below).
 - "category_id": integer or null — the single best category from the allowed list for the overall receipt, or null if none clearly fits.
 - "line_items": array (may be empty). For each distinct purchasable line on the receipt, include an object with:
   - "item": line description (what was bought on that line).
-  - "price": that line's amount as a number.
+  - "quantity", "price", "total" as defined above (include every field you can read or derive).
   - "category_id": integer from the allowed list for that line, or null if no category clearly fits that line.
 
-If the receipt clearly lists multiple product or service lines with individual amounts, fill "line_items" with one entry per line and assign category_id per line when possible. Skip rows that are only tax, tips, or duplicate subtotals that are not themselves line items. If there is only a single total with no meaningful per-line breakdown, use an empty array for "line_items" and rely on the top-level item, price, and category_id.
+If the receipt clearly lists multiple product or service lines with individual amounts, fill "line_items" with one entry per line and assign category_id per line when possible. Skip rows that are only tax, tips, or duplicate subtotals that are not themselves line items. If there is only a single total with no meaningful per-line breakdown, use an empty array for "line_items" and put quantity, price, and total on the top-level object together with item and category_id.
 
 If multiple currencies appear, use the currency and amounts that correspond to the total to pay.
 
 Allowed categories (id and name only):
 {$categoriesJson}
 PROMPT;
+
+        $amountFields = [
+            'quantity' => [
+                'type' => 'INTEGER',
+                'nullable' => true,
+                'description' => 'Unit count (minimum 1). Omit only if unknown; derive when possible.',
+            ],
+            'price' => [
+                'type' => 'NUMBER',
+                'nullable' => true,
+                'description' => 'Unit price. Omit only if unknown; derive from quantity and total when possible.',
+            ],
+            'total' => [
+                'type' => 'NUMBER',
+                'nullable' => true,
+                'description' => 'Line extension (quantity × unit price). Omit only if unknown; derive when possible.',
+            ],
+        ];
 
         $url = sprintf(
             'https://generativelanguage.googleapis.com/v1beta/models/%s:generateContent',
@@ -107,10 +136,7 @@ PROMPT;
                             'type' => 'STRING',
                             'description' => 'Short summary of the whole receipt.',
                         ],
-                        'price' => [
-                            'type' => 'NUMBER',
-                            'description' => 'Total numeric amount from the receipt.',
-                        ],
+                        ...$amountFields,
                         'category_id' => [
                             'type' => 'INTEGER',
                             'nullable' => true,
@@ -126,21 +152,18 @@ PROMPT;
                                         'type' => 'STRING',
                                         'description' => 'Line item description.',
                                     ],
-                                    'price' => [
-                                        'type' => 'NUMBER',
-                                        'description' => 'Line amount.',
-                                    ],
+                                    ...$amountFields,
                                     'category_id' => [
                                         'type' => 'INTEGER',
                                         'nullable' => true,
                                         'description' => 'Category id from the allowed list for this line, or null.',
                                     ],
                                 ],
-                                'required' => ['item', 'price'],
+                                'required' => ['item'],
                             ],
                         ],
                     ],
-                    'required' => ['item', 'price', 'line_items'],
+                    'required' => ['item', 'line_items'],
                 ],
             ],
         ];
@@ -193,7 +216,7 @@ PROMPT;
     }
 
     /**
-     * @return list<array{item: string, price: string, category_id: int|null}>
+     * @return list<array{item: string, quantity: int, price: string, total: string, category_id: int|null}>
      */
     private function recordsFromDecoded(array $decoded, array $allowedIds): array
     {
@@ -206,18 +229,10 @@ PROMPT;
                     continue;
                 }
 
-                $item = isset($line['item']) ? trim((string) $line['item']) : '';
-                $priceRaw = $line['price'] ?? null;
-
-                if ($item === '' || ! is_numeric($priceRaw) || (float) $priceRaw < 0) {
-                    continue;
+                $record = $this->recordFromLine($line, $allowedIds);
+                if ($record !== null) {
+                    $records[] = $record;
                 }
-
-                $records[] = [
-                    'item' => Str::limit($item, 255, ''),
-                    'price' => (string) $priceRaw,
-                    'category_id' => $this->normalizeCategoryId($line['category_id'] ?? null, $allowedIds),
-                ];
             }
         }
 
@@ -226,25 +241,63 @@ PROMPT;
         }
 
         $item = isset($decoded['item']) ? trim((string) $decoded['item']) : '';
-        $priceRaw = $decoded['price'] ?? null;
-
         if ($item === '') {
             throw new ReceiptInterpretationException('The receipt did not yield a usable item description.');
         }
 
-        if (! is_numeric($priceRaw)) {
-            throw new ReceiptInterpretationException('The receipt did not yield a usable price.');
+        $record = $this->recordFromAmounts(
+            Str::limit($item, 255, ''),
+            $decoded,
+            $this->normalizeCategoryId($decoded['category_id'] ?? null, $allowedIds),
+        );
+
+        if ($record === null) {
+            throw new ReceiptInterpretationException('The receipt did not yield usable quantity, price, or total.');
         }
 
-        if ((float) $priceRaw < 0) {
-            throw new ReceiptInterpretationException('The interpreted price was invalid.');
+        return [$record];
+    }
+
+    /**
+     * @param  list<int>  $allowedIds
+     * @return array{item: string, quantity: int, price: string, total: string, category_id: int|null}|null
+     */
+    private function recordFromLine(array $line, array $allowedIds): ?array
+    {
+        $item = isset($line['item']) ? trim((string) $line['item']) : '';
+        if ($item === '') {
+            return null;
         }
 
-        return [[
-            'item' => Str::limit($item, 255, ''),
-            'price' => (string) $priceRaw,
-            'category_id' => $this->normalizeCategoryId($decoded['category_id'] ?? null, $allowedIds),
-        ]];
+        return $this->recordFromAmounts(
+            Str::limit($item, 255, ''),
+            $line,
+            $this->normalizeCategoryId($line['category_id'] ?? null, $allowedIds),
+        );
+    }
+
+    /**
+     * @return array{item: string, quantity: int, price: string, total: string, category_id: int|null}|null
+     */
+    private function recordFromAmounts(string $item, array $source, ?int $categoryId): ?array
+    {
+        try {
+            $amounts = ExpenseAmounts::reconcile(
+                $source['quantity'] ?? null,
+                $source['price'] ?? null,
+                $source['total'] ?? null,
+            );
+        } catch (\InvalidArgumentException) {
+            return null;
+        }
+
+        return [
+            'item' => $item,
+            'quantity' => $amounts['quantity'],
+            'price' => $amounts['price'],
+            'total' => $amounts['total'],
+            'category_id' => $categoryId,
+        ];
     }
 
     /**

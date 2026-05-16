@@ -16,7 +16,9 @@ class ExpenseResource extends JsonResource
         return [
             'id' => $this->id,
             'item' => $this->item,
+            'quantity' => $this->quantity,
             'price' => $this->price,
+            'total' => $this->total,
             'category_id' => $this->category_id,
             'category' => $this->when(
                 $this->relationLoaded('category') && $this->category !== null,

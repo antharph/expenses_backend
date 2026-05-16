@@ -14,7 +14,9 @@ class Expense extends Model
         'user_id',
         'category_id',
         'item',
+        'quantity',
         'price',
+        'total',
     ];
 
     /**
@@ -23,7 +25,9 @@ class Expense extends Model
     protected function casts(): array
     {
         return [
+            'quantity' => 'integer',
             'price' => 'decimal:2',
+            'total' => 'decimal:2',
         ];
     }
 

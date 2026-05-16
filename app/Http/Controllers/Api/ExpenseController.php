@@ -8,6 +8,7 @@ use App\Http\Requests\Api\StoreExpenseRequest;
 use App\Http\Resources\ExpenseResource;
 use App\Models\Category;
 use App\Services\GeminiReceiptInterpreter;
+use App\Support\ExpenseAmounts;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
@@ -45,11 +46,14 @@ class ExpenseController extends Controller
                     $userCategoryId = $data['category_id'] ?? null;
                     $out = collect();
                     foreach ($records as $row) {
-                        $out->push($request->user()->expenses()->create([
-                            'item' => $row['item'],
-                            'price' => $row['price'],
-                            'category_id' => $userCategoryId ?? $row['category_id'],
-                        ]));
+                        $attributes = ExpenseAmounts::fromParsedAmounts(
+                            $row['item'],
+                            $row['quantity'] ?? null,
+                            $row['price'] ?? null,
+                            $row['total'] ?? null,
+                            $userCategoryId ?? $row['category_id'],
+                        );
+                        $out->push($request->user()->expenses()->create($attributes));
                     }
 
                     return $out;
@@ -65,11 +69,15 @@ class ExpenseController extends Controller
             }
         }
 
-        $expense = $request->user()->expenses()->create([
-            'item' => (string) $data['item'],
-            'price' => $data['price'],
-            'category_id' => $data['category_id'] ?? null,
-        ]);
+        $quantity = max(1, (int) ($data['quantity'] ?? 1));
+        $expense = $request->user()->expenses()->create(
+            ExpenseAmounts::fromUnitPrice(
+                (string) $data['item'],
+                $data['price'],
+                $quantity,
+                isset($data['category_id']) ? (int) $data['category_id'] : null,
+            ),
+        );
 
         return ExpenseResource::make($expense->fresh(['category']))->response()->setStatusCode(201);
     }
