@@ -10,6 +10,7 @@ use App\Models\Category;
 use App\Services\GeminiReceiptInterpreter;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Http\Response;
 use Illuminate\Support\Facades\DB;
 
 class ExpenseController extends Controller
@@ -71,5 +72,16 @@ class ExpenseController extends Controller
         ]);
 
         return ExpenseResource::make($expense->fresh(['category']))->response()->setStatusCode(201);
+    }
+
+    public function destroy(Request $request, int $expense): Response
+    {
+        $deleted = $request->user()->expenses()->whereKey($expense)->delete();
+
+        if ($deleted === 0) {
+            abort(404);
+        }
+
+        return response()->noContent();
     }
 }

@@ -36,6 +36,23 @@ Each expense object:
 - **`401`** — missing or invalid token.
 - **`429`** — throttled (if rate limiting applies).
 
+## Delete expense
+
+**`DELETE /api/v1/expenses/{id}`**
+
+- **`id`**: integer primary key of the expense.
+
+Only expenses that belong to the authenticated user may be deleted. If no matching row exists for that user, the API responds with **`404`** (same as unknown id).
+
+### Success
+
+**`204`** — no response body.
+
+### Errors
+
+- **`401`** — unauthenticated.
+- **`404`** — expense not found for this user.
+
 ## Create expense
 
 **`POST /api/v1/expenses`**

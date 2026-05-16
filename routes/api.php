@@ -20,5 +20,7 @@ Route::prefix('v1')->group(function (): void {
         Route::get('/categories', [CategoryController::class, 'index']);
         Route::get('/expenses', [ExpenseController::class, 'index']);
         Route::post('/expenses', [ExpenseController::class, 'store']);
+        Route::delete('/expenses/{expense}', [ExpenseController::class, 'destroy'])
+            ->whereNumber('expense');
     });
 });
