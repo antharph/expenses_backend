@@ -12,6 +12,10 @@ use Throwable;
 
 class GeminiReceiptInterpreter
 {
+    public function __construct(
+        private readonly ReceiptImageCompressor $imageCompressor,
+    ) {}
+
     /**
      * Read a receipt image once (in memory / temp upload path) and return one or more
      * expense rows (item, price, optional category_id from the allowed list).
@@ -36,6 +40,10 @@ class GeminiReceiptInterpreter
         if ($binary === '') {
             throw new ReceiptInterpretationException('The receipt file was empty.');
         }
+
+        $prepared = $this->imageCompressor->compress($binary, $mime);
+        $binary = $prepared['binary'];
+        $mime = $prepared['mime'];
 
         $base64 = base64_encode($binary);
 

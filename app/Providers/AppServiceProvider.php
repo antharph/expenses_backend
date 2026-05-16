@@ -2,6 +2,7 @@
 
 namespace App\Providers;
 
+use App\Services\ReceiptImageCompressor;
 use Carbon\CarbonImmutable;
 use Illuminate\Support\Facades\Date;
 use Illuminate\Support\Facades\DB;
@@ -15,7 +16,12 @@ class AppServiceProvider extends ServiceProvider
      */
     public function register(): void
     {
-        //
+        $this->app->singleton(ReceiptImageCompressor::class, function () {
+            return new ReceiptImageCompressor(
+                maxWidth: (int) config('gemini.image_max_width', 800),
+                jpegQuality: (int) config('gemini.image_jpeg_quality', 85),
+            );
+        });
     }
 
     /**
