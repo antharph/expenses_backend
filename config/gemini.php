@@ -4,11 +4,11 @@ return [
 
     /*
     |--------------------------------------------------------------------------
-    | Google Gemini (receipt interpretation)
+    | Google Gemini (receipt + category inference)
     |--------------------------------------------------------------------------
     |
-    | Used when POST /api/v1/expenses includes a receipt image: the file is not
-    | stored; it is sent to Gemini once to infer item and price.
+    | Used when POST /api/v1/expenses includes a receipt image (parse lines) or
+    | when manual entry omits category_id (infer category from item text).
     |
     */
 

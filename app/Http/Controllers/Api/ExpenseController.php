@@ -7,8 +7,10 @@ use App\Http\Controllers\Controller;
 use App\Http\Requests\Api\StoreExpenseRequest;
 use App\Http\Resources\ExpenseResource;
 use App\Models\Category;
+use App\Services\GeminiCategoryInferrer;
 use App\Services\GeminiReceiptInterpreter;
 use App\Support\ExpenseAmounts;
+use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
@@ -18,6 +20,7 @@ class ExpenseController extends Controller
 {
     public function __construct(
         private readonly GeminiReceiptInterpreter $geminiReceiptInterpreter,
+        private readonly GeminiCategoryInferrer $geminiCategoryInferrer,
     ) {}
 
     public function index(Request $request): JsonResponse
@@ -39,7 +42,7 @@ class ExpenseController extends Controller
 
         if ($request->hasFile('receipt')) {
             try {
-                $categories = Category::query()->orderBy('name')->get(['id', 'name']);
+                $categories = $this->categoriesForGemini();
                 $records = $this->geminiReceiptInterpreter->interpret($request->file('receipt'), $categories);
 
                 $created = DB::transaction(function () use ($request, $records, $data) {
@@ -70,12 +73,20 @@ class ExpenseController extends Controller
         }
 
         $quantity = max(1, (int) ($data['quantity'] ?? 1));
+        $categoryId = isset($data['category_id']) ? (int) $data['category_id'] : null;
+        if ($categoryId === null) {
+            $categoryId = $this->geminiCategoryInferrer->infer(
+                (string) $data['item'],
+                $this->categoriesForGemini(),
+            );
+        }
+
         $expense = $request->user()->expenses()->create(
             ExpenseAmounts::fromUnitPrice(
                 (string) $data['item'],
                 $data['price'],
                 $quantity,
-                isset($data['category_id']) ? (int) $data['category_id'] : null,
+                $categoryId,
             ),
         );
 
@@ -91,5 +102,13 @@ class ExpenseController extends Controller
         }
 
         return response()->noContent();
+    }
+
+    /**
+     * @return Collection<int, Category>
+     */
+    private function categoriesForGemini(): Collection
+    {
+        return Category::query()->orderBy('name')->get(['id', 'name', 'description']);
     }
 }

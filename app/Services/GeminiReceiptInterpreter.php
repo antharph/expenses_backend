@@ -5,6 +5,7 @@ namespace App\Services;
 use App\Exceptions\ReceiptInterpretationException;
 use App\Models\Category;
 use App\Support\ExpenseAmounts;
+use App\Support\GeminiCategories;
 use Illuminate\Http\Client\Response;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Http;
@@ -21,7 +22,7 @@ class GeminiReceiptInterpreter
      * Read a receipt image once (in memory / temp upload path) and return one or more
      * expense rows with reconciled quantity, unit price, and line total.
      *
-     * @param  iterable<int, Category|array{id:int|string, name:string}>  $categories
+     * @param  iterable<int, Category|array{id:int|string, name:string, description?:string|null}>  $categories
      * @return list<array{item: string, quantity: int, price: string, total: string, category_id: int|null}>
      */
     public function interpret(UploadedFile $file, iterable $categories = []): array
@@ -48,8 +49,8 @@ class GeminiReceiptInterpreter
 
         $base64 = base64_encode($binary);
 
-        $categoryPayload = $this->categoryPayload($categories);
-        $allowedIds = array_values(array_unique(array_map(static fn (array $c): int => $c['id'], $categoryPayload)));
+        $categoryPayload = GeminiCategories::payload($categories);
+        $allowedIds = GeminiCategories::allowedIds($categoryPayload);
 
         $categoriesJson = json_encode(
             array_values($categoryPayload),
@@ -59,7 +60,7 @@ class GeminiReceiptInterpreter
         $prompt = <<<PROMPT
 You are parsing a purchase receipt or invoice image for an expense tracker.
 
-You will be given a JSON array of allowed categories. Each element has only "id" (integer) and "name" (string). You MUST NOT invent category ids: every category_id you output must either be null or exactly match one of the provided ids.
+You will be given a JSON array of allowed categories. Each element has "id" (integer), "name" (string), and optionally "description" (string) with extra guidance for when to use that category. You MUST NOT invent category ids: every category_id you output must either be null or exactly match one of the provided ids.
 
 For every expense row (top-level summary and each line item), extract or infer:
 - "quantity": integer count of units (minimum 1). Use 1 when the receipt shows a single unit or only a line total with no count.
@@ -84,7 +85,7 @@ If the receipt clearly lists multiple product or service lines with individual a
 
 If multiple currencies appear, use the currency and amounts that correspond to the total to pay.
 
-Allowed categories (id and name only):
+Allowed categories:
 {$categoriesJson}
 PROMPT;
 
@@ -188,34 +189,6 @@ PROMPT;
     }
 
     /**
-     * @param  iterable<int, Category|array{id:int|string, name:string}>  $categories
-     * @return list<array{id: int, name: string}>
-     */
-    private function categoryPayload(iterable $categories): array
-    {
-        $out = [];
-        foreach ($categories as $row) {
-            if ($row instanceof Category) {
-                $out[] = [
-                    'id' => (int) $row->id,
-                    'name' => (string) $row->name,
-                ];
-
-                continue;
-            }
-
-            if (is_array($row) && array_key_exists('id', $row) && array_key_exists('name', $row)) {
-                $out[] = [
-                    'id' => (int) $row['id'],
-                    'name' => (string) $row['name'],
-                ];
-            }
-        }
-
-        return $out;
-    }
-
-    /**
      * @return list<array{item: string, quantity: int, price: string, total: string, category_id: int|null}>
      */
     private function recordsFromDecoded(array $decoded, array $allowedIds): array
@@ -248,7 +221,7 @@ PROMPT;
         $record = $this->recordFromAmounts(
             Str::limit($item, 255, ''),
             $decoded,
-            $this->normalizeCategoryId($decoded['category_id'] ?? null, $allowedIds),
+            GeminiCategories::normalizeId($decoded['category_id'] ?? null, $allowedIds),
         );
 
         if ($record === null) {
@@ -272,7 +245,7 @@ PROMPT;
         return $this->recordFromAmounts(
             Str::limit($item, 255, ''),
             $line,
-            $this->normalizeCategoryId($line['category_id'] ?? null, $allowedIds),
+            GeminiCategories::normalizeId($line['category_id'] ?? null, $allowedIds),
         );
     }
 
@@ -298,28 +271,6 @@ PROMPT;
             'total' => $amounts['total'],
             'category_id' => $categoryId,
         ];
-    }
-
-    /**
-     * @param  list<int>  $allowedIds
-     */
-    private function normalizeCategoryId(mixed $raw, array $allowedIds): ?int
-    {
-        if ($raw === null || $raw === '') {
-            return null;
-        }
-
-        if (! is_numeric($raw)) {
-            return null;
-        }
-
-        $id = (int) $raw;
-
-        if (! in_array($id, $allowedIds, true)) {
-            return null;
-        }
-
-        return $id;
     }
 
     /**

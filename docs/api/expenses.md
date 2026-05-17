@@ -65,11 +65,11 @@ Only expenses that belong to the authenticated user may be deleted. If no matchi
 
 | Field | Rules |
 | --- | --- |
-| `receipt` | Optional image file (jpeg, png, gif, webp, etc.), max **5120 KB**. When present, the image is **not stored**. It is sent once to **Google Gemini** (`GEMINI_MODEL`, e.g. `gemini-2.5-flash-lite`) using `GEMINI_AI_KEY`. The API loads **all categories** (`id` and `name` only), sends them to Gemini with the image, and asks the model for a **`category_id` per line item** when a listed category clearly fits. Persisted rows use only ids that exist in `categories`. |
+| `receipt` | Optional image file (jpeg, png, gif, webp, etc.), max **5120 KB**. When present, the image is **not stored**. It is sent once to **Google Gemini** (`GEMINI_MODEL`, e.g. `gemini-2.5-flash-lite`) using `GEMINI_AI_KEY`. The API loads **all categories** (`id`, `name`, and `description` when set), sends them to Gemini with the image, and asks the model for a **`category_id` per line item** when a listed category clearly fits. Persisted rows use only ids that exist in `categories`. |
 | `item` | Required **unless** `receipt` is uploaded; otherwise ignored (Gemini supplies values). Max 255 characters. |
 | `quantity` | Required **unless** `receipt` is uploaded; otherwise ignored. Integer, minimum `1` (defaults to `1` when omitted). |
 | `price` | Required **unless** `receipt` is uploaded; otherwise ignored. Unit price as a number, minimum 0. The API stores `total` as `price` × `quantity` (two decimal places). |
-| `category_id` | Optional. Integer; must exist in `categories.id` when provided. With a **`receipt`**, if set it overrides Gemini’s inferred category for **every** expense row created from that upload; if omitted, Gemini’s per-line (or inferred) category is used. |
+| `category_id` | Optional. Integer; must exist in `categories.id` when provided. With a **`receipt`**, if set it overrides Gemini’s inferred category for **every** expense row created from that upload; if omitted, Gemini’s per-line (or inferred) category is used. **Without a receipt**, when omitted the API calls Gemini with the `item` text and the same category list (including `description`) to infer `category_id`; if inference fails or is uncertain, the expense is stored with `category_id` `null`. |
 
 Receipt uploads are parsed by Gemini for `quantity`, unit `price`, and line `total` per row. The API reconciles missing values so `total` = `price` × `quantity` (two decimal places)—for example, quantity + line total derives unit price, or a lone line total implies `quantity` `1`.
 
