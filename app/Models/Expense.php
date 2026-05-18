@@ -13,10 +13,14 @@ class Expense extends Model
     protected $fillable = [
         'user_id',
         'category_id',
+        'store_id',
         'item',
         'quantity',
         'price',
         'total',
+        'transaction_number',
+        'invoice_number',
+        'transaction_at',
     ];
 
     /**
@@ -28,7 +32,17 @@ class Expense extends Model
             'quantity' => 'integer',
             'price' => 'decimal:2',
             'total' => 'decimal:2',
+            'transaction_at' => 'datetime',
         ];
+    }
+
+    protected static function booted(): void
+    {
+        static::creating(static function (Expense $expense): void {
+            if ($expense->transaction_at === null) {
+                $expense->transaction_at = now();
+            }
+        });
     }
 
     public function user(): BelongsTo
@@ -39,5 +53,10 @@ class Expense extends Model
     public function category(): BelongsTo
     {
         return $this->belongsTo(Category::class);
+    }
+
+    public function store(): BelongsTo
+    {
+        return $this->belongsTo(Store::class);
     }
 }

@@ -11,6 +11,8 @@ All paths require **`Authorization: Bearer {token}`** (Sanctum).
 | Name | Description |
 | --- | --- |
 | `page` | Optional. Page number (default `1`). Page size comes from **`PAGINATION_PER_PAGE`** in the API `.env`, clamped between 1 and 100, exposed as `config('app.pagination_per_page')`. |
+| `from` | Optional. Inclusive start date, format **`Y-m-d`** (e.g. `2026-05-18`). Must be sent together with `to`. Filters on **`transaction_at`** (or **`created_at`** when `transaction_at` is null) using inclusive calendar-day boundaries in **`DEFAULT_TIMEZONE`** (`config('app.expenses_display_timezone')`). Stored instants are UTC; `from`/`to` are interpreted in the display timezone. |
+| `to` | Optional. Inclusive end date, format **`Y-m-d`**. Must be sent together with `from` and must be on or after `from`. Same timezone and column rules as `from`. |
 
 ### Success
 
@@ -30,12 +32,16 @@ Each expense object:
 | `total` | string (decimal) | Line total (`price` × `quantity`) with two decimal places. |
 | `category_id` | integer or `null` | Optional foreign key to `categories.id`. |
 | `category` | object or omitted | When the category relation is loaded and set: `id`, `code`, `name`. Omitted when uncategorized or not loaded. |
-| `date` | string | Created instant formatted as **`M/D`** (`n/j`), using **`DEFAULT_TIMEZONE`** from the API `.env` (stored in UTC in the database). Examples: `3/9`, `12/31`. |
+| `store_id` | integer or `null` | Optional foreign key to `stores.id` when the merchant was resolved from a receipt. |
+| `transaction_number` | string or `null` | Receipt or transaction number when captured from a receipt. |
+| `invoice_number` | string or `null` | Invoice or official receipt number when captured from a receipt. |
+| `date` | string | Transaction instant (`transaction_at`, or `created_at` when unset) formatted as **`M/D`** (`n/j`), using **`DEFAULT_TIMEZONE`** from the API `.env`. Examples: `3/9`, `12/31`. |
 | `receipt_url` | `null` | Receipt images are not stored; this field is reserved for clients and remains null. |
 
 ### Errors
 
 - **`401`** — missing or invalid token.
+- **`422`** — invalid or incomplete date filter (e.g. only `from` provided, bad format, or `to` before `from`).
 - **`429`** — throttled (if rate limiting applies).
 
 ## Delete expense
@@ -71,7 +77,7 @@ Only expenses that belong to the authenticated user may be deleted. If no matchi
 | `price` | Required **unless** `receipt` is uploaded; otherwise ignored. Unit price as a number, minimum 0. The API stores `total` as `price` × `quantity` (two decimal places). |
 | `category_id` | Optional. Integer; must exist in `categories.id` when provided. With a **`receipt`**, if set it overrides Gemini’s inferred category for **every** expense row created from that upload; if omitted, Gemini’s per-line (or inferred) category is used. **Without a receipt**, when omitted the API calls Gemini with the `item` text and the same category list (including `description`) to infer `category_id`; if inference fails or is uncertain, the expense is stored with `category_id` `null`. |
 
-Receipt uploads are parsed by Gemini for `quantity`, unit `price`, and line `total` per row. The API reconciles missing values so `total` = `price` × `quantity` (two decimal places)—for example, quantity + line total derives unit price, or a lone line total implies `quantity` `1`.
+Receipt uploads are parsed by Gemini for `quantity`, unit `price`, and line `total` per row, plus receipt-level merchant and transaction fields when visible: `store_name`, `legal_name`, `address`, `transaction_number`, `invoice_number`, and `transaction_at` (ISO 8601). Matching stores are looked up or created in `stores` by `name`, `legal_name`, and `address`; the resulting `store_id` is saved on each expense row from that upload. The API reconciles missing amount values so `total` = `price` × `quantity` (two decimal places). Manual entries (no receipt) set `transaction_at` to the same instant as `created_at` when no transaction date is provided.
 
 ### Success
 

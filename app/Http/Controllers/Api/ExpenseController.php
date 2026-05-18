@@ -4,12 +4,15 @@ namespace App\Http\Controllers\Api;
 
 use App\Exceptions\ReceiptInterpretationException;
 use App\Http\Controllers\Controller;
+use App\Http\Requests\Api\IndexExpenseRequest;
 use App\Http\Requests\Api\StoreExpenseRequest;
 use App\Http\Resources\ExpenseResource;
 use App\Models\Category;
 use App\Services\GeminiCategoryInferrer;
 use App\Services\GeminiReceiptInterpreter;
+use App\Services\StoreResolver;
 use App\Support\ExpenseAmounts;
+use App\Support\ExpenseDateRangeFilter;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -21,19 +24,26 @@ class ExpenseController extends Controller
     public function __construct(
         private readonly GeminiReceiptInterpreter $geminiReceiptInterpreter,
         private readonly GeminiCategoryInferrer $geminiCategoryInferrer,
+        private readonly StoreResolver $storeResolver,
     ) {}
 
-    public function index(Request $request): JsonResponse
+    public function index(IndexExpenseRequest $request): JsonResponse
     {
         $perPage = max(1, min(100, (int) config('app.pagination_per_page', 15)));
+        $validated = $request->validated();
 
-        $paginator = $request->user()
+        $query = $request->user()
             ->expenses()
             ->with('category')
-            ->latest('id')
-            ->paginate($perPage);
+            ->latest('id');
 
-        return ExpenseResource::collection($paginator)->response();
+        ExpenseDateRangeFilter::apply(
+            $query,
+            $validated['from'] ?? null,
+            $validated['to'] ?? null,
+        );
+
+        return ExpenseResource::collection($query->paginate($perPage))->response();
     }
 
     public function store(StoreExpenseRequest $request): JsonResponse
@@ -43,18 +53,26 @@ class ExpenseController extends Controller
         if ($request->hasFile('receipt')) {
             try {
                 $categories = $this->categoriesForGemini();
-                $records = $this->geminiReceiptInterpreter->interpret($request->file('receipt'), $categories);
+                $interpretation = $this->geminiReceiptInterpreter->interpret(
+                    $request->file('receipt'),
+                    $categories,
+                );
+                $storeId = $this->storeResolver->resolve($interpretation->metadata->store);
+                $receiptAttributes = $interpretation->metadata->expenseAttributes($storeId);
 
-                $created = DB::transaction(function () use ($request, $records, $data) {
+                $created = DB::transaction(function () use ($request, $interpretation, $data, $receiptAttributes) {
                     $userCategoryId = $data['category_id'] ?? null;
                     $out = collect();
-                    foreach ($records as $row) {
-                        $attributes = ExpenseAmounts::fromParsedAmounts(
-                            $row['item'],
-                            $row['quantity'] ?? null,
-                            $row['price'] ?? null,
-                            $row['total'] ?? null,
-                            $userCategoryId ?? $row['category_id'],
+                    foreach ($interpretation->records as $row) {
+                        $attributes = array_merge(
+                            ExpenseAmounts::fromParsedAmounts(
+                                $row['item'],
+                                $row['quantity'] ?? null,
+                                $row['price'] ?? null,
+                                $row['total'] ?? null,
+                                $userCategoryId ?? $row['category_id'],
+                            ),
+                            $receiptAttributes,
                         );
                         $out->push($request->user()->expenses()->create($attributes));
                     }

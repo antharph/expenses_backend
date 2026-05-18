@@ -2,10 +2,12 @@
 
 namespace App\Http\Resources;
 
+use App\Models\Expense;
+use App\Support\ExpenseTimezone;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
 
-/** @mixin \App\Models\Expense */
+/** @mixin Expense */
 class ExpenseResource extends JsonResource
 {
     /**
@@ -28,6 +30,9 @@ class ExpenseResource extends JsonResource
                     'name' => $this->category->name,
                 ],
             ),
+            'store_id' => $this->store_id,
+            'transaction_number' => $this->transaction_number,
+            'invoice_number' => $this->invoice_number,
             'date' => $this->formattedExpenseDate(),
             'receipt_url' => null,
         ];
@@ -35,12 +40,11 @@ class ExpenseResource extends JsonResource
 
     private function formattedExpenseDate(): ?string
     {
-        if ($this->created_at === null) {
+        $instant = $this->transaction_at ?? $this->created_at;
+        if ($instant === null) {
             return null;
         }
 
-        $tz = (string) config('app.expenses_display_timezone', 'UTC');
-
-        return $this->created_at->copy()->timezone($tz)->format('n/j');
+        return $instant->copy()->timezone(ExpenseTimezone::display())->format('n/j');
     }
 }

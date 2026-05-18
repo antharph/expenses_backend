@@ -141,7 +141,9 @@ return [
     |--------------------------------------------------------------------------
     |
     | Timestamps are stored in UTC; responses format the expense "date" field
-    | in month/day order (no leading zeros) in this timezone. Set via DEFAULT_TIMEZONE.
+    | in month/day order (no leading zeros) in this timezone. GET /api/v1/expenses
+    | from/to query parameters use the same timezone for calendar-day bounds on
+    | transaction_at. Set via DEFAULT_TIMEZONE.
     |
     */
 

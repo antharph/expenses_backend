@@ -6,6 +6,7 @@ use App\Exceptions\ReceiptInterpretationException;
 use App\Models\Category;
 use App\Support\ExpenseAmounts;
 use App\Support\GeminiCategories;
+use App\Support\ReceiptMetadata;
 use Illuminate\Http\Client\Response;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Http;
@@ -23,9 +24,8 @@ class GeminiReceiptInterpreter
      * expense rows with reconciled quantity, unit price, and line total.
      *
      * @param  iterable<int, Category|array{id:int|string, name:string, description?:string|null}>  $categories
-     * @return list<array{item: string, quantity: int, price: string, total: string, category_id: int|null}>
      */
-    public function interpret(UploadedFile $file, iterable $categories = []): array
+    public function interpret(UploadedFile $file, iterable $categories = []): ReceiptInterpretationResult
     {
         $apiKey = (string) config('gemini.api_key');
         if ($apiKey === '') {
@@ -85,6 +85,14 @@ If the receipt clearly lists multiple product or service lines with individual a
 
 If multiple currencies appear, use the currency and amounts that correspond to the total to pay.
 
+Also extract receipt-level merchant and transaction details when visible on the receipt:
+- "store_name": the customer-facing brand or location name on the receipt (e.g. "Jollibee").
+- "legal_name": the registered business or franchisee entity when shown separately (e.g. "Golden Lion Food" on a Jollibee receipt). Omit or null when not shown.
+- "address": store or branch address as printed. Omit or null when not shown.
+- "transaction_number": receipt or transaction / control number when printed. Omit or null when not shown.
+- "invoice_number": invoice or OR number when printed. Omit or null when not shown.
+- "transaction_at": date and time of purchase in ISO 8601 when the receipt shows a transaction date or datetime (include timezone offset when printed). Omit or null when no transaction date is visible.
+
 Allowed categories:
 {$categoriesJson}
 PROMPT;
@@ -143,6 +151,36 @@ PROMPT;
                             'nullable' => true,
                             'description' => 'Best category id from the allowed list for the whole receipt, or null.',
                         ],
+                        'store_name' => [
+                            'type' => 'STRING',
+                            'nullable' => true,
+                            'description' => 'Customer-facing store or brand name on the receipt.',
+                        ],
+                        'legal_name' => [
+                            'type' => 'STRING',
+                            'nullable' => true,
+                            'description' => 'Registered business or franchisee entity when shown separately from the brand name.',
+                        ],
+                        'address' => [
+                            'type' => 'STRING',
+                            'nullable' => true,
+                            'description' => 'Store or branch address as printed on the receipt.',
+                        ],
+                        'transaction_number' => [
+                            'type' => 'STRING',
+                            'nullable' => true,
+                            'description' => 'Receipt or transaction / control number.',
+                        ],
+                        'invoice_number' => [
+                            'type' => 'STRING',
+                            'nullable' => true,
+                            'description' => 'Invoice or official receipt number.',
+                        ],
+                        'transaction_at' => [
+                            'type' => 'STRING',
+                            'nullable' => true,
+                            'description' => 'Transaction date/time in ISO 8601 when visible on the receipt.',
+                        ],
                         'line_items' => [
                             'type' => 'ARRAY',
                             'description' => 'Per-line items when the receipt lists multiple lines with amounts.',
@@ -185,7 +223,17 @@ PROMPT;
 
         $decoded = $this->decodeModelJson($response);
 
-        return $this->recordsFromDecoded($decoded, $allowedIds);
+        return $this->resultFromDecoded($decoded, $allowedIds);
+    }
+
+    private function resultFromDecoded(array $decoded, array $allowedIds): ReceiptInterpretationResult
+    {
+        $records = $this->recordsFromDecoded($decoded, $allowedIds);
+
+        return new ReceiptInterpretationResult(
+            records: $records,
+            metadata: ReceiptMetadata::fromDecoded($decoded),
+        );
     }
 
     /**
