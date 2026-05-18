@@ -60,7 +60,7 @@ class GoogleAuthController extends Controller
             }
         }
 
-        $this->applyTimezoneFromRequest($user, $request);
+        $this->applyTimezoneFromValidated($user, $validated);
 
         $token = $user->createToken('mobile')->plainTextToken;
 

@@ -7,14 +7,21 @@ use Illuminate\Http\Request;
 
 trait PersistsUserTimezone
 {
-    protected function applyTimezoneFromRequest(User $user, Request $request): void
+    /**
+     * @param  array<string, mixed>  $validated
+     */
+    protected function applyTimezoneFromValidated(User $user, array $validated): void
     {
-        if (! $request->filled('timezone')) {
+        if (! array_key_exists('timezone', $validated) || $validated['timezone'] === null) {
             return;
         }
 
-        $user->forceFill([
-            'timezone' => User::normalizeTimezone($request->string('timezone')->toString()),
-        ])->save();
+        $normalized = User::normalizeTimezone((string) $validated['timezone']);
+
+        if ($user->timezone === $normalized) {
+            return;
+        }
+
+        $user->forceFill(['timezone' => $normalized])->save();
     }
 }
