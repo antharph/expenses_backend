@@ -35,6 +35,29 @@ class User extends Authenticatable
     }
 
     /**
+     * IANA timezone for expense calendar days and API date formatting.
+     */
+    public function displayTimezone(): string
+    {
+        return self::normalizeTimezone($this->timezone);
+    }
+
+    public static function normalizeTimezone(?string $timezone): string
+    {
+        if ($timezone === null || $timezone === '') {
+            return 'UTC';
+        }
+
+        try {
+            new \DateTimeZone($timezone);
+        } catch (\Exception) {
+            return 'UTC';
+        }
+
+        return $timezone;
+    }
+
+    /**
      * @return HasMany<Expense, $this>
      */
     public function expenses(): HasMany

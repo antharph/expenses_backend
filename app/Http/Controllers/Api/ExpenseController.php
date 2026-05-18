@@ -15,6 +15,7 @@ use App\Services\GeminiReceiptInterpreter;
 use App\Services\StoreResolver;
 use App\Support\ExpenseAmounts;
 use App\Support\ExpenseDateRangeFilter;
+use App\Support\ExpenseTimezone;
 use App\Support\ExpenseWeek;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Http\JsonResponse;
@@ -34,6 +35,7 @@ class ExpenseController extends Controller
     {
         $perPage = max(1, min(100, (int) config('app.pagination_per_page', 15)));
         $validated = $request->validated();
+        $timezone = ExpenseTimezone::forUser($request->user());
 
         $query = $request->user()
             ->expenses()
@@ -44,6 +46,7 @@ class ExpenseController extends Controller
             $query,
             $validated['from'] ?? null,
             $validated['to'] ?? null,
+            $timezone,
         );
 
         $sumTotal = ExpenseAmounts::formatMoney((float) (clone $query)->sum('total'));
@@ -56,20 +59,21 @@ class ExpenseController extends Controller
     {
         $year = (int) $request->validated('year');
         $week = (int) $request->validated('week');
-        [$startDate, $endDate] = ExpenseWeek::weekDateRange($year, $week);
+        $timezone = ExpenseTimezone::forUser($request->user());
+        [$startDate, $endDate] = ExpenseWeek::weekDateRange($year, $week, $timezone);
 
         $query = $request->user()
             ->expenses()
             ->with(['category', 'store'])
             ->latest('id');
 
-        ExpenseDateRangeFilter::apply($query, $startDate, $endDate);
+        ExpenseDateRangeFilter::apply($query, $startDate, $endDate, $timezone);
 
         $sumTotal = ExpenseAmounts::formatMoney((float) (clone $query)->sum('total'));
         $expenses = $query->get();
 
-        $prev = ExpenseWeek::previous($year, $week);
-        $next = ExpenseWeek::next($year, $week);
+        $prev = ExpenseWeek::previous($year, $week, $timezone);
+        $next = ExpenseWeek::next($year, $week, $timezone);
 
         return ExpenseResource::collection($expenses)
             ->additional([

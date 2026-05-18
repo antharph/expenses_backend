@@ -2,6 +2,7 @@
 
 namespace App\Http\Requests\Api;
 
+use App\Support\ExpenseTimezone;
 use App\Support\ExpenseWeek;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Validator;
@@ -41,8 +42,9 @@ class WeeklyExpenseRequest extends FormRequest
 
             $year = (int) $this->input('year');
             $week = (int) $this->input('week');
+            $timezone = ExpenseTimezone::forUser($this->user());
 
-            $maxWeek = ExpenseWeek::weeksInYear($year);
+            $maxWeek = ExpenseWeek::weeksInYear($year, $timezone);
             if ($week > $maxWeek) {
                 $validator->errors()->add(
                     'week',
@@ -50,7 +52,7 @@ class WeeklyExpenseRequest extends FormRequest
                 );
             }
 
-            if (! ExpenseWeek::weekOverlapsYear($year, $week)) {
+            if (! ExpenseWeek::weekOverlapsYear($year, $week, $timezone)) {
                 $validator->errors()->add('week', 'The selected week does not fall within the given year.');
             }
         });

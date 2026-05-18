@@ -39,32 +39,36 @@ class ExpenseResource extends JsonResource
                     'name' => $this->store->name,
                 ],
             ),
-            'transaction_at' => $this->formattedTransactionAt(),
+            'transaction_at' => $this->formattedTransactionAt($request),
             'transaction_number' => $this->transaction_number,
             'invoice_number' => $this->invoice_number,
-            'date' => $this->formattedExpenseDate(),
+            'date' => $this->formattedExpenseDate($request),
             'receipt_url' => null,
         ];
     }
 
-    private function formattedExpenseDate(): ?string
+    private function formattedExpenseDate(Request $request): ?string
     {
         $instant = $this->transactionInstant();
         if ($instant === null) {
             return null;
         }
 
-        return $instant->copy()->timezone(ExpenseTimezone::display())->format('n/j');
+        $timezone = ExpenseTimezone::forUser($request->user())->name();
+
+        return $instant->copy()->timezone($timezone)->format('n/j');
     }
 
-    private function formattedTransactionAt(): ?string
+    private function formattedTransactionAt(Request $request): ?string
     {
         $instant = $this->transactionInstant();
         if ($instant === null) {
             return null;
         }
 
-        return $instant->copy()->timezone(ExpenseTimezone::display())->toIso8601String();
+        $timezone = ExpenseTimezone::forUser($request->user())->name();
+
+        return $instant->copy()->timezone($timezone)->toIso8601String();
     }
 
     private function transactionInstant(): ?CarbonInterface

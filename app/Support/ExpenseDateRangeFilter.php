@@ -15,8 +15,12 @@ final class ExpenseDateRangeFilter
      *
      * @param  Builder<\App\Models\Expense>|Relation<\App\Models\Expense, *, *>  $query
      */
-    public static function apply(Builder|Relation $query, ?string $from, ?string $to): void
-    {
+    public static function apply(
+        Builder|Relation $query,
+        ?string $from,
+        ?string $to,
+        ExpenseTimezone $timezone,
+    ): void {
         if ($from === null && $to === null) {
             return;
         }
@@ -24,12 +28,12 @@ final class ExpenseDateRangeFilter
         $effectiveAt = 'COALESCE(transaction_at, created_at)';
 
         if ($from !== null) {
-            $start = ExpenseTimezone::startOfLocalDayUtc($from);
+            $start = $timezone->startOfLocalDayUtc($from);
             $query->whereRaw("{$effectiveAt} >= ?", [$start]);
         }
 
         if ($to !== null) {
-            $end = ExpenseTimezone::endOfLocalDayUtc($to);
+            $end = $timezone->endOfLocalDayUtc($to);
             $query->whereRaw("{$effectiveAt} <= ?", [$end]);
         }
     }
