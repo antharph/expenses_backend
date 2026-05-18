@@ -16,6 +16,7 @@ Creates a user and returns a Sanctum token.
 | `email` | string | Required, valid email, unique |
 | `password` | string | Required, Laravel default password rules, must match confirmation |
 | `password_confirmation` | string | Required, must equal `password` |
+| `timezone` | string | Optional. IANA timezone identifier (e.g. `Asia/Manila`). When omitted, defaults to `UTC`. |
 
 **201 Created**
 
@@ -62,6 +63,7 @@ Exchanges a **Firebase Auth ID token** (from `FirebaseAuth.instance.currentUser.
 | Field | Type | Rules |
 | --- | --- | --- |
 | `id_token` | string | Required; Firebase JWT |
+| `timezone` | string | Optional. IANA timezone identifier (e.g. `Asia/Manila`). Applied on sign-up and updated on later sign-ins when sent. When omitted on create, defaults to `UTC`. |
 
 **200 OK** — same envelope as login (`message`, `token`, `token_type`, `user`). If the email already exists, the account is linked by storing `firebase_uid`.
 

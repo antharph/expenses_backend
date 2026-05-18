@@ -2,8 +2,10 @@
 
 namespace App\Http\Controllers\Api\Auth;
 
+use App\Http\Controllers\Api\Auth\Concerns\PersistsUserTimezone;
 use App\Http\Controllers\Controller;
 use App\Models\User;
+use App\Rules\IanaTimezone;
 use App\Services\FirebaseIdTokenVerifier;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -13,10 +15,13 @@ use InvalidArgumentException;
 
 class GoogleAuthController extends Controller
 {
+    use PersistsUserTimezone;
+
     public function __invoke(Request $request, FirebaseIdTokenVerifier $verifier): JsonResponse
     {
         $validated = $request->validate([
             'id_token' => ['required', 'string'],
+            'timezone' => ['nullable', 'string', 'max:255', new IanaTimezone],
         ]);
 
         try {
@@ -50,9 +55,12 @@ class GoogleAuthController extends Controller
                     'password' => Hash::make(Str::password(32)),
                     'firebase_uid' => $firebaseUid,
                     'email_verified_at' => ($claims->email_verified ?? false) ? now() : null,
+                    'timezone' => User::normalizeTimezone($request->input('timezone')),
                 ]);
             }
         }
+
+        $this->applyTimezoneFromRequest($user, $request);
 
         $token = $user->createToken('mobile')->plainTextToken;
 
