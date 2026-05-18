@@ -19,6 +19,8 @@ Route::prefix('v1')->group(function (): void {
         Route::post('/logout', LogoutController::class);
         Route::get('/categories', [CategoryController::class, 'index']);
         Route::get('/expenses', [ExpenseController::class, 'index']);
+        Route::get('/expenses/y/{year}/w/{week}', [ExpenseController::class, 'weekly'])
+            ->whereNumber(['year', 'week']);
         Route::post('/expenses', [ExpenseController::class, 'store']);
         Route::delete('/expenses/{expense}', [ExpenseController::class, 'destroy'])
             ->whereNumber('expense');

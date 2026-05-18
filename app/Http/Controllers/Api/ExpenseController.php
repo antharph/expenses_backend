@@ -6,6 +6,7 @@ use App\Exceptions\ReceiptInterpretationException;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Api\IndexExpenseRequest;
 use App\Http\Requests\Api\StoreExpenseRequest;
+use App\Http\Requests\Api\WeeklyExpenseRequest;
 use App\Http\Resources\ExpenseCollection;
 use App\Http\Resources\ExpenseResource;
 use App\Models\Category;
@@ -14,6 +15,7 @@ use App\Services\GeminiReceiptInterpreter;
 use App\Services\StoreResolver;
 use App\Support\ExpenseAmounts;
 use App\Support\ExpenseDateRangeFilter;
+use App\Support\ExpenseWeek;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -48,6 +50,42 @@ class ExpenseController extends Controller
         $paginator = $query->paginate($perPage);
 
         return (new ExpenseCollection($paginator, $sumTotal))->response();
+    }
+
+    public function weekly(WeeklyExpenseRequest $request): JsonResponse
+    {
+        $year = (int) $request->validated('year');
+        $week = (int) $request->validated('week');
+        [$startDate, $endDate] = ExpenseWeek::weekDateRange($year, $week);
+
+        $query = $request->user()
+            ->expenses()
+            ->with(['category', 'store'])
+            ->latest('id');
+
+        ExpenseDateRangeFilter::apply($query, $startDate, $endDate);
+
+        $sumTotal = ExpenseAmounts::formatMoney((float) (clone $query)->sum('total'));
+        $expenses = $query->get();
+
+        $prev = ExpenseWeek::previous($year, $week);
+        $next = ExpenseWeek::next($year, $week);
+
+        return ExpenseResource::collection($expenses)
+            ->additional([
+                'meta' => [
+                    'year' => $year,
+                    'week' => $week,
+                    'start_date' => $startDate,
+                    'end_date' => $endDate,
+                    'total' => $expenses->count(),
+                    'sum_total' => $sumTotal,
+                    'prev' => ExpenseWeek::weekUrl($prev['year'], $prev['week']),
+                    'current' => ExpenseWeek::weekUrl($year, $week),
+                    'next' => ExpenseWeek::weekUrl($next['year'], $next['week']),
+                ],
+            ])
+            ->response();
     }
 
     public function store(StoreExpenseRequest $request): JsonResponse

@@ -6,7 +6,7 @@ All endpoints are prefixed with **`/api`**. The current version lives under **`/
 | --- | --- |
 | Registration, login, Google (Firebase), dashboard, logout | [authentication.md](./authentication.md) |
 | Categories (list for pickers) | [categories.md](./categories.md) |
-| Expenses (list, create, receipt upload) | [expenses.md](./expenses.md) |
+| Expenses (list, by week, create, receipt upload) | [expenses.md](./expenses.md) |
 
 ## Base URL
 

@@ -46,6 +46,71 @@ Each expense object:
 - **`422`** — invalid or incomplete date filter (e.g. only `from` provided, bad format, or `to` before `from`).
 - **`429`** — throttled (if rate limiting applies).
 
+## Expenses for a calendar week
+
+**`GET /api/v1/expenses/y/{year}/w/{week}`**
+
+Returns expense rows for the requested **Sunday–Saturday** week, using the same **`data`** object shape as **`GET /api/v1/expenses`** (`ExpenseResource`). Filtering uses inclusive calendar-day boundaries in **`DEFAULT_TIMEZONE`** (`config('app.expenses_display_timezone')`) on **`transaction_at`** (or **`created_at`** when `transaction_at` is null). Results are ordered by newest **`id`** first (same as the list endpoint).
+
+### Path parameters
+
+| Name | Description |
+| --- | --- |
+| `year` | Four-digit calendar year (e.g. `2026`). |
+| `week` | Week number **`1`–`52`**. Week **1** is the Sunday–Saturday week that contains January 1 (its Sunday may fall in the previous December). The maximum week for a year is **`52`** or fewer when fewer Sunday-based weeks overlap that year. |
+
+### Success
+
+**`200`** — JSON with `data` and `meta`:
+
+- **`data`**: array of expense objects (same fields as the list endpoint; see table above). Empty array when there are no expenses in the week.
+- **`meta`**:
+  - **`year`**, **`week`**: echoed path parameters (integers).
+  - **`start_date`**, **`end_date`**: inclusive week bounds as **`Y-m-d`** (Sunday and Saturday).
+  - **`total`**: integer count of expenses in the week.
+  - **`sum_total`**: string decimal (two places) — sum of `total` for all expenses in the week.
+  - **`prev`**, **`current`**, **`next`**: absolute URLs for the previous, current, and next week (navigation crosses year boundaries; e.g. week 1’s **`prev`** is the last week of the prior year).
+
+Example:
+
+```json
+{
+  "data": [
+    {
+      "id": 42,
+      "item": "Monday lunch",
+      "quantity": 1,
+      "price": "12.00",
+      "total": "12.00",
+      "category_id": null,
+      "store_id": null,
+      "transaction_at": "2026-05-11T12:00:00+00:00",
+      "transaction_number": null,
+      "invoice_number": null,
+      "date": "5/11",
+      "receipt_url": null
+    }
+  ],
+  "meta": {
+    "year": 2026,
+    "week": 20,
+    "start_date": "2026-05-10",
+    "end_date": "2026-05-16",
+    "total": 1,
+    "sum_total": "12.00",
+    "prev": "https://api.example.com/api/v1/expenses/y/2026/w/19",
+    "current": "https://api.example.com/api/v1/expenses/y/2026/w/20",
+    "next": "https://api.example.com/api/v1/expenses/y/2026/w/21"
+  }
+}
+```
+
+### Errors
+
+- **`401`** — unauthenticated.
+- **`422`** — invalid `year` / `week` (e.g. week `0`, week `53`, or week greater than the number of weeks in that year).
+- **`429`** — throttled (if rate limiting applies).
+
 ## Delete expense
 
 **`DELETE /api/v1/expenses/{id}`**
