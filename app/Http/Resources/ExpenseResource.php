@@ -4,6 +4,7 @@ namespace App\Http\Resources;
 
 use App\Models\Expense;
 use App\Support\ExpenseTimezone;
+use Carbon\CarbonInterface;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
 
@@ -31,6 +32,14 @@ class ExpenseResource extends JsonResource
                 ],
             ),
             'store_id' => $this->store_id,
+            'store' => $this->when(
+                $this->relationLoaded('store') && $this->store !== null,
+                fn (): array => [
+                    'id' => $this->store->id,
+                    'name' => $this->store->name,
+                ],
+            ),
+            'transaction_at' => $this->formattedTransactionAt(),
             'transaction_number' => $this->transaction_number,
             'invoice_number' => $this->invoice_number,
             'date' => $this->formattedExpenseDate(),
@@ -40,11 +49,26 @@ class ExpenseResource extends JsonResource
 
     private function formattedExpenseDate(): ?string
     {
-        $instant = $this->transaction_at ?? $this->created_at;
+        $instant = $this->transactionInstant();
         if ($instant === null) {
             return null;
         }
 
         return $instant->copy()->timezone(ExpenseTimezone::display())->format('n/j');
+    }
+
+    private function formattedTransactionAt(): ?string
+    {
+        $instant = $this->transactionInstant();
+        if ($instant === null) {
+            return null;
+        }
+
+        return $instant->copy()->timezone(ExpenseTimezone::display())->toIso8601String();
+    }
+
+    private function transactionInstant(): ?CarbonInterface
+    {
+        return $this->transaction_at ?? $this->created_at;
     }
 }

@@ -35,7 +35,7 @@ class ExpenseController extends Controller
 
         $query = $request->user()
             ->expenses()
-            ->with('category')
+            ->with(['category', 'store'])
             ->latest('id');
 
         ExpenseDateRangeFilter::apply(
@@ -84,7 +84,7 @@ class ExpenseController extends Controller
                     return $out;
                 });
 
-                $created = $created->map(static fn ($expense) => $expense->fresh(['category']));
+                $created = $created->map(static fn ($expense) => $expense->fresh(['category', 'store']));
 
                 return ExpenseResource::collection($created)->response()->setStatusCode(201);
             } catch (ReceiptInterpretationException $e) {
@@ -112,7 +112,7 @@ class ExpenseController extends Controller
             ),
         );
 
-        return ExpenseResource::make($expense->fresh(['category']))->response()->setStatusCode(201);
+        return ExpenseResource::make($expense->fresh(['category', 'store']))->response()->setStatusCode(201);
     }
 
     public function destroy(Request $request, int $expense): Response
