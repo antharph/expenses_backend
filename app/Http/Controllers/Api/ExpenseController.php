@@ -6,6 +6,7 @@ use App\Exceptions\ReceiptInterpretationException;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Api\IndexExpenseRequest;
 use App\Http\Requests\Api\StoreExpenseRequest;
+use App\Http\Resources\ExpenseCollection;
 use App\Http\Resources\ExpenseResource;
 use App\Models\Category;
 use App\Services\GeminiCategoryInferrer;
@@ -43,7 +44,10 @@ class ExpenseController extends Controller
             $validated['to'] ?? null,
         );
 
-        return ExpenseResource::collection($query->paginate($perPage))->response();
+        $sumTotal = ExpenseAmounts::formatMoney((float) (clone $query)->sum('total'));
+        $paginator = $query->paginate($perPage);
+
+        return (new ExpenseCollection($paginator, $sumTotal))->response();
     }
 
     public function store(StoreExpenseRequest $request): JsonResponse

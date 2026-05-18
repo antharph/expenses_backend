@@ -19,7 +19,9 @@ All paths require **`Authorization: Bearer {token}`** (Sanctum).
 **`200`** — Laravel paginator JSON with `data`, `links`, and `meta`:
 
 - **`data`**: array of expense objects.
-- **`meta`**: includes `current_page`, `last_page`, `per_page`, `total`, etc.
+- **`meta`**: includes `current_page`, `last_page`, `per_page`, `total`, `sum_total`, etc.
+  - **`total`**: integer count of all expenses matching the query (across pages), including date filters when `from`/`to` are set.
+  - **`sum_total`**: string decimal (two places) — sum of the `total` field for all matching expenses, not only the current page.
 
 Each expense object:
 
