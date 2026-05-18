@@ -2,8 +2,10 @@
 
 namespace App\Http\Controllers\Api\Auth;
 
+use App\Http\Controllers\Api\Auth\Concerns\PersistsUserTimezone;
 use App\Http\Controllers\Controller;
 use App\Models\User;
+use App\Rules\IanaTimezone;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
@@ -11,20 +13,25 @@ use Illuminate\Validation\ValidationException;
 
 class LoginController extends Controller
 {
+    use PersistsUserTimezone;
+
     public function __invoke(Request $request): JsonResponse
     {
-        $credentials = $request->validate([
+        $validated = $request->validate([
             'email' => ['required', 'string', 'email'],
             'password' => ['required', 'string'],
+            'timezone' => ['nullable', 'string', 'max:255', new IanaTimezone],
         ]);
 
-        $user = User::query()->where('email', $credentials['email'])->first();
+        $user = User::query()->where('email', $validated['email'])->first();
 
-        if (! $user || ! Hash::check($credentials['password'], $user->password)) {
+        if (! $user || ! Hash::check($validated['password'], $user->password)) {
             throw ValidationException::withMessages([
                 'email' => __('auth.failed'),
             ]);
         }
+
+        $this->applyTimezoneFromValidated($user, $validated);
 
         $token = $user->createToken('mobile')->plainTextToken;
 

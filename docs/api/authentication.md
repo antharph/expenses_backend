@@ -47,6 +47,7 @@ Authenticates with email and password and returns a Sanctum token.
 | --- | --- | --- |
 | `email` | string | Required, valid email |
 | `password` | string | Required |
+| `timezone` | string | Optional. IANA timezone identifier (e.g. `Asia/Manila`). **Updated** on the user record when sent. |
 
 **200 OK** — same envelope as register (`message`, `token`, `token_type`, `user`).
 
