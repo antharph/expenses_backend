@@ -51,6 +51,14 @@ The `Budget` model casts `reset_days` to `array` when loaded from the database. 
 - **Next reset:** none (`end_date` for status is open-ended until a log is closed or a new cycle is created).
 - **Next cycle (logs):** when advancing with `createNextCycleLog`, the next period can start the day after the previous log’s `end_date` if set.
 
+### Boot-time cycle sync
+
+- A first `budget_logs` row is created when a budget is created.
+- The mobile boot sync endpoint creates a log for the current active period if one is missing.
+- For `date_fixed` and `interval`, when the latest log is from an expired period, the service finalizes that log’s `actual_spent` and creates **one** new log for the current period.
+- Missed automatic periods are **not backfilled**. If a weekly budget is not opened for three cycles, sync does not create three historical logs; rollover is applied once from the finalized latest log.
+- `manual` budgets are not automatically advanced once they already have a log.
+
 ---
 
 ## Rollover (optional)

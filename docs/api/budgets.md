@@ -48,6 +48,25 @@ Lists the authenticated user’s budgets with **current pay-period progress** fo
 
 ---
 
+## POST `/api/v1/budgets/sync-cycles`
+
+Synchronizes the authenticated user’s budget cycle logs. The Flutter app should call this after a session is restored or a sign-in/register flow succeeds.
+
+For each budget:
+
+- If no log exists, creates the current log for the active period.
+- For `date_fixed` and `interval`, if the latest log is from an expired period, finalizes that log’s `spent_amount` from linked category expenses and creates **one** new log for the current period.
+- Missed periods are **not backfilled**. Rollover is applied once from the finalized latest log.
+- `manual` budgets are not automatically advanced once they already have a log.
+
+**200 OK**
+
+Returns the same budget progress collection shape as `GET /api/v1/budgets`.
+
+**401 Unauthenticated** — missing or invalid token.
+
+---
+
 ## POST `/api/v1/budgets`
 
 Creates a budget for the authenticated user.
@@ -76,7 +95,7 @@ Creates a budget for the authenticated user.
 
 **201 Created**
 
-Returns the same budget progress resource shape as `GET /api/v1/budgets`.
+Returns the same budget progress resource shape as `GET /api/v1/budgets`. A first `budget_logs` entry is created for the budget’s current active period.
 
 **422 Unprocessable Entity** — validation errors in Laravel format (`errors` object).
 

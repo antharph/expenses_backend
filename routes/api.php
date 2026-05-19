@@ -20,6 +20,7 @@ Route::prefix('v1')->group(function (): void {
         Route::post('/logout', LogoutController::class);
         Route::get('/categories', [CategoryController::class, 'index']);
         Route::get('/budgets', [BudgetController::class, 'index']);
+        Route::post('/budgets/sync-cycles', [BudgetController::class, 'syncCycles']);
         Route::post('/budgets', [BudgetController::class, 'store']);
         Route::get('/budgets/{budget}/logs', [BudgetController::class, 'logs'])
             ->whereNumber('budget');

@@ -9,6 +9,7 @@ use App\Http\Requests\Api\StoreBudgetRequest;
 use App\Http\Resources\BudgetLogResource;
 use App\Http\Resources\BudgetProgressResource;
 use App\Models\Budget;
+use App\Services\BudgetService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
@@ -26,7 +27,7 @@ class BudgetController extends Controller
         return BudgetProgressResource::collection($budgets)->response();
     }
 
-    public function store(StoreBudgetRequest $request): JsonResponse
+    public function store(StoreBudgetRequest $request, BudgetService $budgetService): JsonResponse
     {
         $validated = $request->validated();
         $resetType = $validated['reset_type'];
@@ -43,10 +44,24 @@ class BudgetController extends Controller
 
         $budget->categories()->sync($validated['category_ids'] ?? []);
         $budget->load('user');
+        $budgetService->ensureCurrentCycleLog($budget);
 
         return (new BudgetProgressResource($budget))
             ->response()
             ->setStatusCode(201);
+    }
+
+    public function syncCycles(Request $request, BudgetService $budgetService): JsonResponse
+    {
+        $budgetService->syncBudgetCyclesForUser($request->user());
+
+        $budgets = $request->user()
+            ->budgets()
+            ->with('user')
+            ->orderBy('name')
+            ->get();
+
+        return BudgetProgressResource::collection($budgets)->response();
     }
 
     public function logs(Request $request, Budget $budget): JsonResponse

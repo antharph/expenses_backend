@@ -6,7 +6,9 @@ use App\Enums\BudgetResetType;
 use App\Models\Budget;
 use App\Models\BudgetLog;
 use App\Models\Expense;
+use App\Models\User;
 use Carbon\Carbon;
+use Illuminate\Support\Facades\DB;
 use InvalidArgumentException;
 
 class BudgetService
@@ -168,6 +170,10 @@ class BudgetService
         $lastLog = $budget->logs()->latest('start_date')->first();
         $rolloverAmount = 0.0;
 
+        if ($lastLog !== null) {
+            $lastLog = $this->finalizeLogSpend($budget, $lastLog);
+        }
+
         if ($budget->rollover && $lastLog !== null) {
             $rolloverAmount = max(
                 0.0,
@@ -183,6 +189,43 @@ class BudgetService
             'allocated_amount' => $this->formatMoney((float) $budget->amount + $rolloverAmount),
             'actual_spent' => '0.00',
         ]);
+    }
+
+    public function ensureCurrentCycleLog(Budget $budget): BudgetLog
+    {
+        $budget->loadMissing(['categories:id', 'user']);
+
+        return DB::transaction(function () use ($budget): BudgetLog {
+            Budget::query()->whereKey($budget->id)->lockForUpdate()->firstOrFail();
+
+            $periodStart = $this->getCurrentPeriodStart($budget)->startOfDay();
+            $existingLog = $budget->logs()
+                ->where('start_date', '>=', $periodStart->copy()->utc())
+                ->where('start_date', '<=', $periodStart->copy()->endOfDay()->utc())
+                ->lockForUpdate()
+                ->first();
+
+            if ($existingLog !== null) {
+                return $existingLog;
+            }
+
+            return $budget->logs()->create([
+                'start_date' => $periodStart,
+                'end_date' => $this->getNextEndDate($budget, $periodStart),
+                'allocated_amount' => $this->formatMoney($budget->amount),
+                'actual_spent' => '0.00',
+            ]);
+        });
+    }
+
+    public function syncBudgetCyclesForUser(User $user): void
+    {
+        $user->budgets()
+            ->with(['categories:id', 'user'])
+            ->orderBy('id')
+            ->each(function (Budget $budget): void {
+                $this->syncBudgetCycle($budget);
+            });
     }
 
     private function getNextStartDate(Budget $budget, ?BudgetLog $lastLog = null): Carbon
@@ -204,6 +247,86 @@ class BudgetService
         }
 
         return $this->getCurrentPeriodStart($budget);
+    }
+
+    private function syncBudgetCycle(Budget $budget): BudgetLog
+    {
+        $budget->loadMissing(['categories:id', 'user']);
+
+        return DB::transaction(function () use ($budget): BudgetLog {
+            Budget::query()->whereKey($budget->id)->lockForUpdate()->firstOrFail();
+
+            $lastLog = $budget->logs()
+                ->latest('start_date')
+                ->lockForUpdate()
+                ->first();
+
+            if ($lastLog === null) {
+                return $this->ensureCurrentCycleLog($budget);
+            }
+
+            if ($this->resetType($budget) === BudgetResetType::Manual) {
+                return $lastLog;
+            }
+
+            $currentPeriodStart = $this->getCurrentPeriodStart($budget)->startOfDay();
+            $lastPeriodStart = $lastLog->start_date->copy()
+                ->timezone($currentPeriodStart->timezone)
+                ->startOfDay();
+
+            if ($lastPeriodStart->greaterThanOrEqualTo($currentPeriodStart)) {
+                return $lastLog;
+            }
+
+            $lastLog = $this->finalizeLogSpend($budget, $lastLog);
+            $rolloverAmount = $budget->rollover
+                ? max(0.0, (float) $lastLog->allocated_amount - (float) $lastLog->actual_spent)
+                : 0.0;
+
+            return $budget->logs()->create([
+                'start_date' => $currentPeriodStart,
+                'end_date' => $this->getNextEndDate($budget, $currentPeriodStart),
+                'allocated_amount' => $this->formatMoney((float) $budget->amount + $rolloverAmount),
+                'actual_spent' => '0.00',
+            ]);
+        });
+    }
+
+    private function finalizeLogSpend(Budget $budget, BudgetLog $log): BudgetLog
+    {
+        if ($log->start_date === null) {
+            return $log;
+        }
+
+        $endDate = $log->end_date?->copy()
+            ?? $this->getNextEndDate($budget, $log->start_date->copy())
+            ?? Carbon::now($log->start_date->timezone)->endOfDay();
+
+        $log->forceFill([
+            'end_date' => $endDate,
+            'actual_spent' => $this->budgetSpentBetween($budget, $log->start_date->copy(), $endDate),
+        ])->save();
+
+        return $log->refresh();
+    }
+
+    private function budgetSpentBetween(Budget $budget, Carbon $startDate, Carbon $endDate): string
+    {
+        $budget->loadMissing('categories:id');
+        $categoryIds = $budget->categories->pluck('id');
+
+        if ($categoryIds->isEmpty()) {
+            return '0.00';
+        }
+
+        return $this->formatMoney(
+            Expense::query()
+                ->where('user_id', $budget->user_id)
+                ->whereIn('category_id', $categoryIds)
+                ->whereRaw('COALESCE(transaction_at, created_at) >= ?', [$startDate->copy()->utc()])
+                ->whereRaw('COALESCE(transaction_at, created_at) <= ?', [$endDate->copy()->utc()])
+                ->sum('total'),
+        );
     }
 
     private function getNextEndDate(Budget $budget, Carbon $periodStart): ?Carbon
