@@ -23,6 +23,8 @@ Route::prefix('v1')->group(function (): void {
         Route::post('/budgets', [BudgetController::class, 'store']);
         Route::get('/budgets/{budget}/logs', [BudgetController::class, 'logs'])
             ->whereNumber('budget');
+        Route::delete('/budgets/{budget}', [BudgetController::class, 'destroy'])
+            ->whereNumber('budget');
         Route::get('/expenses', [ExpenseController::class, 'index']);
         Route::get('/expenses/y/{year}/w/{week}', [ExpenseController::class, 'weekly'])
             ->whereNumber(['year', 'week']);

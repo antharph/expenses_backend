@@ -112,3 +112,15 @@ Returns **budget cycle history** (`budget_logs`) for one budget, newest period f
 **404 Not Found** — budget does not exist or belongs to another user.
 
 **401 Unauthenticated** — missing or invalid token.
+
+---
+
+## DELETE `/api/v1/budgets/{budget}`
+
+Permanently deletes a budget owned by the authenticated user. Related `budget_logs` and category links are removed via database cascades.
+
+**204 No Content** — budget deleted.
+
+**404 Not Found** — budget does not exist or belongs to another user.
+
+**401 Unauthenticated** — missing or invalid token.

@@ -11,6 +11,7 @@ use App\Http\Resources\BudgetProgressResource;
 use App\Models\Budget;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Http\Response;
 
 class BudgetController extends Controller
 {
@@ -58,5 +59,14 @@ class BudgetController extends Controller
             ->get();
 
         return BudgetLogResource::collection($logs)->response();
+    }
+
+    public function destroy(Request $request, Budget $budget): Response
+    {
+        abort_unless($budget->user_id === $request->user()->id, 404);
+
+        $budget->delete();
+
+        return response()->noContent();
     }
 }
