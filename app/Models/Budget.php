@@ -19,6 +19,7 @@ class Budget extends Model
         'amount',
         'reset_type',
         'reset_days',
+        'rollover',
     ];
 
     /**
@@ -30,6 +31,7 @@ class Budget extends Model
             'amount' => 'decimal:2',
             'reset_type' => BudgetResetType::class,
             'reset_days' => 'array',
+            'rollover' => 'boolean',
         ];
     }
 
