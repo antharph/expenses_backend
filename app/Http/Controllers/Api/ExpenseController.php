@@ -6,6 +6,7 @@ use App\Exceptions\ReceiptInterpretationException;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Api\IndexExpenseRequest;
 use App\Http\Requests\Api\StoreExpenseRequest;
+use App\Http\Requests\Api\UpdateExpenseRequest;
 use App\Http\Requests\Api\WeeklyExpenseRequest;
 use App\Http\Resources\ExpenseCollection;
 use App\Http\Resources\ExpenseResource;
@@ -16,6 +17,7 @@ use App\Services\StoreResolver;
 use App\Support\ExpenseAmounts;
 use App\Support\ExpenseDateRangeFilter;
 use App\Support\ExpenseTimezone;
+use App\Support\ExpenseTransactionAt;
 use App\Support\ExpenseWeek;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Http\JsonResponse;
@@ -155,6 +157,36 @@ class ExpenseController extends Controller
         );
 
         return ExpenseResource::make($expense->fresh(['category', 'store']))->response()->setStatusCode(201);
+    }
+
+    public function update(UpdateExpenseRequest $request, int $expense): JsonResponse
+    {
+        $model = $request->user()->expenses()->whereKey($expense)->firstOrFail();
+
+        $data = $request->validated();
+        $categoryId = array_key_exists('category_id', $data)
+            ? (isset($data['category_id']) ? (int) $data['category_id'] : null)
+            : $model->category_id;
+
+        $timezone = ExpenseTimezone::forUser($request->user());
+        $transactionAt = ExpenseTransactionAt::toUtc(
+            (string) $data['transaction_date'],
+            isset($data['transaction_time']) ? (string) $data['transaction_time'] : null,
+            $timezone,
+            $model->transaction_at ?? $model->created_at,
+        );
+
+        $model->update(array_merge(
+            ExpenseAmounts::fromUnitPrice(
+                (string) $data['item'],
+                $data['price'],
+                (int) $data['quantity'],
+                $categoryId,
+            ),
+            ['transaction_at' => $transactionAt],
+        ));
+
+        return ExpenseResource::make($model->fresh(['category', 'store']))->response();
     }
 
     public function destroy(Request $request, int $expense): Response

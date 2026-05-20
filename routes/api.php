@@ -30,6 +30,8 @@ Route::prefix('v1')->group(function (): void {
         Route::get('/expenses/y/{year}/w/{week}', [ExpenseController::class, 'weekly'])
             ->whereNumber(['year', 'week']);
         Route::post('/expenses', [ExpenseController::class, 'store']);
+        Route::put('/expenses/{expense}', [ExpenseController::class, 'update'])
+            ->whereNumber('expense');
         Route::delete('/expenses/{expense}', [ExpenseController::class, 'destroy'])
             ->whereNumber('expense');
     });

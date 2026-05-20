@@ -111,6 +111,37 @@ Example:
 - **`422`** — invalid `year` / `week` (e.g. week `0`, week `53`, or week greater than the number of weeks in that year).
 - **`429`** — throttled (if rate limiting applies).
 
+## Update expense
+
+**`PUT /api/v1/expenses/{id}`**
+
+- **`id`**: integer primary key of the expense.
+
+Only expenses that belong to the authenticated user may be updated.
+
+### Request
+
+**`application/json`** body:
+
+| Field | Rules |
+| --- | --- |
+| `item` | Required. Max 255 characters. |
+| `quantity` | Required. Integer, minimum `1`. |
+| `price` | Required. Unit price as a number, minimum 0. The API stores `total` as `price` × `quantity` (two decimal places). |
+| `transaction_date` | Required. Calendar date as **`Y-m-d`** (e.g. `2026-05-20`). The client should send the date the user picked in their locale UI; the API interprets it as a calendar day in the authenticated user's **`users.timezone`** (IANA, synced from the device on sign-in). Stored on the expense as **`transaction_at`** in **UTC**. |
+| `transaction_time` | Optional. Local clock time as **`H:i`** (24-hour) in the same user timezone. When omitted, the API keeps the existing time-of-day from the expense's current `transaction_at` (or `created_at` when unset). |
+| `category_id` | Optional. Integer; must exist in `categories.id` when provided. When omitted from the request, the existing `category_id` on the expense is kept. |
+
+### Success
+
+**`200`** — JSON object **`data`** is a single expense (same shape as list items).
+
+### Errors
+
+- **`401`** — unauthenticated.
+- **`404`** — expense not found for this user.
+- **`422`** — validation errors (`errors` object with field messages).
+
 ## Delete expense
 
 **`DELETE /api/v1/expenses/{id}`**
