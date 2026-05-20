@@ -21,6 +21,7 @@ class BudgetProgressResource extends JsonResource
     public function toArray(Request $request): array
     {
         $budget = $this->resource;
+        $budget->loadMissing('categories:id,name');
         $timezone = $budget->user?->displayTimezone() ?? 'UTC';
         $progress = app(BudgetService::class)->getBudgetProgress($budget);
 
@@ -41,6 +42,12 @@ class BudgetProgressResource extends JsonResource
             'remaining_amount' => $progress->amount_remaining,
             'percentage_spent' => $progress->percentage_spent,
             'is_over_budget' => $progress->is_over_budget,
+            'categories' => $budget->categories
+                ->map(static fn ($category): array => [
+                    'id' => $category->id,
+                    'name' => $category->name,
+                ])
+                ->values(),
         ];
     }
 

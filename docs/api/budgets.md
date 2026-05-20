@@ -29,7 +29,13 @@ Lists the authenticated user’s budgets with **current pay-period progress** fo
       "spent_amount": "1500.00",
       "remaining_amount": "4500.00",
       "percentage_spent": 25.0,
-      "is_over_budget": false
+      "is_over_budget": false,
+      "categories": [
+        {
+          "id": 1,
+          "name": "Food & drink"
+        }
+      ]
     }
   ]
 }
@@ -43,6 +49,7 @@ Lists the authenticated user’s budgets with **current pay-period progress** fo
 | `spent_amount` | Sum of linked category expenses in the current period. |
 | `remaining_amount` | `allocated_amount − spent_amount` (may be negative when over budget). |
 | `is_over_budget` | `true` when `spent_amount` exceeds `allocated_amount`. |
+| `categories` | Categories attached to the budget. Budgets must have at least one category. |
 
 **401 Unauthenticated** — missing or invalid token.
 
@@ -91,7 +98,7 @@ Creates a budget for the authenticated user.
 | `reset_type` | Required. One of `date_fixed`, `interval`, or `manual`. |
 | `reset_days` | Required for `date_fixed` and `interval`; omit or `null` for `manual`. Fixed-date days must be `1`–`31`; interval budgets require exactly one day count. |
 | `rollover` | Optional boolean, defaults to `false`. |
-| `category_ids` | Optional category IDs to attach to the budget. |
+| `category_ids` | Required array with at least one existing category ID. |
 
 **201 Created**
 

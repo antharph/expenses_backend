@@ -28,7 +28,7 @@ class StoreBudgetRequest extends FormRequest
             'reset_days' => ['nullable', 'array'],
             'reset_days.*' => ['integer', 'min:1', 'max:366'],
             'rollover' => ['sometimes', 'boolean'],
-            'category_ids' => ['nullable', 'array'],
+            'category_ids' => ['required', 'array', 'min:1'],
             'category_ids.*' => ['integer', Rule::exists('categories', 'id')],
         ];
     }

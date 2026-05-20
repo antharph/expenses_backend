@@ -21,7 +21,7 @@ class BudgetController extends Controller
     {
         $budgets = $request->user()
             ->budgets()
-            ->with('user')
+            ->with(['user', 'categories:id,name'])
             ->orderBy('name')
             ->get();
 
@@ -43,8 +43,8 @@ class BudgetController extends Controller
             'rollover' => (bool) ($validated['rollover'] ?? false),
         ]);
 
-        $budget->categories()->sync($validated['category_ids'] ?? []);
-        $budget->load('user');
+        $budget->categories()->sync($validated['category_ids']);
+        $budget->load(['user', 'categories:id,name']);
         $budgetService->ensureCurrentCycleLog($budget);
 
         return (new BudgetProgressResource($budget))
@@ -58,7 +58,7 @@ class BudgetController extends Controller
 
         $budgets = $request->user()
             ->budgets()
-            ->with('user')
+            ->with(['user', 'categories:id,name'])
             ->orderBy('name')
             ->get();
 
