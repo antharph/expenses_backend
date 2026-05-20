@@ -9,6 +9,7 @@ use App\Http\Requests\Api\StoreBudgetRequest;
 use App\Http\Resources\BudgetLogResource;
 use App\Http\Resources\BudgetProgressResource;
 use App\Models\Budget;
+use App\Models\BudgetLog;
 use App\Services\BudgetService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -68,12 +69,17 @@ class BudgetController extends Controller
     {
         abort_unless($budget->user_id === $request->user()->id, 404);
 
-        $logs = $budget->logs()
-            ->with(['budget.user'])
-            ->orderByDesc('start_date')
-            ->get();
+        $budget->load([
+            'user',
+            'categories:id',
+            'logs' => static fn ($query) => $query->orderByDesc('start_date'),
+        ]);
 
-        return BudgetLogResource::collection($logs)->response();
+        $budget->logs->each(
+            static fn (BudgetLog $log) => $log->setRelation('budget', $budget),
+        );
+
+        return BudgetLogResource::collection($budget->logs)->response();
     }
 
     public function destroy(Request $request, Budget $budget): Response

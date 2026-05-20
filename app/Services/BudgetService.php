@@ -8,6 +8,7 @@ use App\Models\BudgetLog;
 use App\Models\Expense;
 use App\Models\User;
 use Carbon\Carbon;
+use Carbon\CarbonInterface;
 use Illuminate\Support\Facades\DB;
 use InvalidArgumentException;
 
@@ -312,6 +313,59 @@ class BudgetService
         return ! $immediateNextPeriodStart->equalTo($currentPeriodStart);
     }
 
+    /**
+     * Spent amount for budget log API: running total for the open period, stored
+     * actual_spent after the period is finalized.
+     */
+    public function getLogSpentAmount(Budget $budget, BudgetLog $log): string
+    {
+        if (! $this->isActivePeriodLog($budget, $log)) {
+            return $this->formatMoney($log->actual_spent);
+        }
+
+        $budget->loadMissing('user');
+        $timezone = $budget->user?->displayTimezone() ?? 'UTC';
+        $startDate = $log->start_date->copy();
+        $periodEnd = $log->end_date?->copy()
+            ?? $this->getNextEndDate($budget, $log->start_date->copy());
+        $nowEnd = Carbon::now($timezone)->endOfDay();
+        $queryEndDate = $periodEnd !== null && $periodEnd->lessThan($nowEnd)
+            ? $periodEnd
+            : $nowEnd;
+
+        return $this->budgetSpentBetween($budget, $startDate, $queryEndDate);
+    }
+
+    /**
+     * Latest log for the current budget period with spending still in flight
+     * (actual_spent is written only when the period is finalized).
+     */
+    public function isActivePeriodLog(Budget $budget, BudgetLog $log): bool
+    {
+        if ((float) $log->actual_spent > 0) {
+            return false;
+        }
+
+        $latestLog = $budget->relationLoaded('logs')
+            ? $budget->logs->first()
+            : $budget->logs()->latest('start_date')->first();
+        if ($latestLog === null || $latestLog->id !== $log->id) {
+            return false;
+        }
+
+        $budget->loadMissing('user');
+        $timezone = $budget->user?->displayTimezone() ?? 'UTC';
+        $currentPeriodStart = $this->getCurrentPeriodStart($budget)
+            ->timezone($timezone)
+            ->startOfDay();
+        $logPeriodStart = $log->start_date
+            ->copy()
+            ->timezone($timezone)
+            ->startOfDay();
+
+        return $logPeriodStart->equalTo($currentPeriodStart);
+    }
+
     private function finalizeLogSpend(Budget $budget, BudgetLog $log): BudgetLog
     {
         if ($log->start_date === null) {
@@ -330,7 +384,7 @@ class BudgetService
         return $log->refresh();
     }
 
-    private function budgetSpentBetween(Budget $budget, Carbon $startDate, Carbon $endDate): string
+    private function budgetSpentBetween(Budget $budget, CarbonInterface $startDate, CarbonInterface $endDate): string
     {
         $budget->loadMissing('categories:id');
         $categoryIds = $budget->categories->pluck('id');

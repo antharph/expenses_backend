@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Http\Resources;
 
 use App\Models\BudgetLog;
+use App\Services\BudgetService;
 use Carbon\CarbonInterface;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
@@ -19,7 +20,10 @@ class BudgetLogResource extends JsonResource
     {
         $timezone = $this->budget?->user?->displayTimezone() ?? 'UTC';
         $allocated = (float) $this->allocated_amount;
-        $spent = (float) $this->actual_spent;
+        $budget = $this->budget;
+        $spent = $budget !== null
+            ? (float) app(BudgetService::class)->getLogSpentAmount($budget, $this->resource)
+            : (float) $this->actual_spent;
         $rollover = max(0.0, $allocated - $spent);
 
         return [
