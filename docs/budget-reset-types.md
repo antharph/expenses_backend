@@ -56,7 +56,8 @@ The `Budget` model casts `reset_days` to `array` when loaded from the database. 
 - A first `budget_logs` row is created when a budget is created.
 - The mobile boot sync endpoint creates a log for the current active period if one is missing.
 - For `date_fixed` and `interval`, when the latest log is from an expired period, the service finalizes that log’s `actual_spent` and creates **one** new log for the current period.
-- Missed automatic periods are **not backfilled**. If a weekly budget is not opened for three cycles, sync does not create three historical logs; rollover is applied once from the finalized latest log.
+- Missed automatic periods are **not backfilled**. If a weekly budget is not opened for three cycles, sync does not create three historical logs and does **not** apply rollover from the old log.
+- Rollover on sync applies only when advancing to the immediate next period (no skipped cycles between the latest log and the current period).
 - `manual` budgets are not automatically advanced once they already have a log.
 
 ---

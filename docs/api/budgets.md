@@ -56,7 +56,7 @@ For each budget:
 
 - If no log exists, creates the current log for the active period.
 - For `date_fixed` and `interval`, if the latest log is from an expired period, finalizes that log’s `spent_amount` from linked category expenses and creates **one** new log for the current period.
-- Missed periods are **not backfilled**. Rollover is applied once from the finalized latest log.
+- Missed periods are **not backfilled**. Rollover is applied only when the current period is the **immediate** next period after the latest log (no skipped cycles).
 - `manual` budgets are not automatically advanced once they already have a log.
 
 **200 OK**

@@ -279,9 +279,17 @@ class BudgetService
             }
 
             $lastLog = $this->finalizeLogSpend($budget, $lastLog);
-            $rolloverAmount = $budget->rollover
-                ? max(0.0, (float) $lastLog->allocated_amount - (float) $lastLog->actual_spent)
-                : 0.0;
+            $rolloverAmount = 0.0;
+
+            if (
+                $budget->rollover
+                && ! $this->hasMissedCycles($budget, $lastLog, $currentPeriodStart)
+            ) {
+                $rolloverAmount = max(
+                    0.0,
+                    (float) $lastLog->allocated_amount - (float) $lastLog->actual_spent,
+                );
+            }
 
             return $budget->logs()->create([
                 'start_date' => $currentPeriodStart,
@@ -290,6 +298,18 @@ class BudgetService
                 'actual_spent' => '0.00',
             ]);
         });
+    }
+
+    /**
+     * True when one or more automatic periods were skipped between the latest log and now.
+     */
+    private function hasMissedCycles(Budget $budget, BudgetLog $lastLog, Carbon $currentPeriodStart): bool
+    {
+        $immediateNextPeriodStart = $this->getNextStartDate($budget, $lastLog)
+            ->timezone($currentPeriodStart->timezone)
+            ->startOfDay();
+
+        return ! $immediateNextPeriodStart->equalTo($currentPeriodStart);
     }
 
     private function finalizeLogSpend(Budget $budget, BudgetLog $log): BudgetLog
