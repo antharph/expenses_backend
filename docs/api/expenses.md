@@ -11,8 +11,8 @@ All paths require **`Authorization: Bearer {token}`** (Sanctum).
 | Name | Description |
 | --- | --- |
 | `page` | Optional. Page number (default `1`). Page size comes from **`PAGINATION_PER_PAGE`** in the API `.env`, clamped between 1 and 100, exposed as `config('app.pagination_per_page')`. |
-| `from` | Optional. Inclusive start date, format **`Y-m-d`** (e.g. `2026-05-18`). Must be sent together with `to`. Filters on **`transaction_at`** (or **`created_at`** when `transaction_at` is null) using inclusive calendar-day boundaries in the authenticated user's **`users.timezone`** (IANA identifier, e.g. `Asia/Manila`). Stored instants are UTC; `from`/`to` are interpreted in that timezone. |
-| `to` | Optional. Inclusive end date, format **`Y-m-d`**. Must be sent together with `from` and must be on or after `from`. Same timezone and column rules as `from`. |
+| `from` | Optional. Inclusive start boundary, format **`Y-m-d H:i:s`** (e.g. `2026-05-19 00:00:00`) or legacy **`Y-m-d`**. Must be sent together with `to`. Filters on **`transaction_at`** (or **`created_at`** when `transaction_at` is null) in the authenticated user's **`users.timezone`** (IANA identifier, e.g. `Asia/Manila`). Stored instants are UTC; `from`/`to` are interpreted in that timezone. |
+| `to` | Optional. Inclusive end boundary, format **`Y-m-d H:i:s`** (e.g. `2026-05-19 23:59:59`) or legacy **`Y-m-d`**. Must be sent together with `from` and must be on or after `from`. Date-only values are expanded to the whole local calendar day. Same timezone and column rules as `from`. |
 
 ### Success
 

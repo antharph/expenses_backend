@@ -17,8 +17,8 @@ class IndexExpenseRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'from' => ['nullable', 'date_format:Y-m-d', 'required_with:to'],
-            'to' => ['nullable', 'date_format:Y-m-d', 'required_with:from', 'after_or_equal:from'],
+            'from' => ['nullable', 'date_format:Y-m-d,Y-m-d H:i:s', 'required_with:to'],
+            'to' => ['nullable', 'date_format:Y-m-d,Y-m-d H:i:s', 'required_with:from', 'after_or_equal:from'],
         ];
     }
 }

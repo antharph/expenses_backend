@@ -29,9 +29,13 @@ final class ExpenseTimezone
      */
     public function startOfLocalDayUtc(string $ymd): Carbon
     {
-        return Carbon::createFromFormat('Y-m-d', $ymd, $this->timezone)
-            ->startOfDay()
-            ->utc();
+        $boundary = $this->parseDateBoundary($ymd);
+
+        if (! str_contains($ymd, ' ')) {
+            $boundary->startOfDay();
+        }
+
+        return $boundary->utc();
     }
 
     /**
@@ -39,8 +43,19 @@ final class ExpenseTimezone
      */
     public function endOfLocalDayUtc(string $ymd): Carbon
     {
-        return Carbon::createFromFormat('Y-m-d', $ymd, $this->timezone)
-            ->endOfDay()
-            ->utc();
+        $boundary = $this->parseDateBoundary($ymd);
+
+        if (! str_contains($ymd, ' ')) {
+            $boundary->endOfDay();
+        }
+
+        return $boundary->utc();
+    }
+
+    private function parseDateBoundary(string $value): Carbon
+    {
+        $format = str_contains($value, ' ') ? 'Y-m-d H:i:s' : 'Y-m-d';
+
+        return Carbon::createFromFormat($format, $value, $this->timezone);
     }
 }
