@@ -106,7 +106,8 @@ class ExpenseController extends Controller
                     $categories,
                 );
                 $storeId = $this->storeResolver->resolve($interpretation->metadata->store);
-                $receiptAttributes = $interpretation->metadata->expenseAttributes($storeId);
+                $timezone = ExpenseTimezone::forUser($request->user());
+                $receiptAttributes = $interpretation->metadata->expenseAttributes($storeId, $timezone);
 
                 $created = DB::transaction(function () use ($request, $interpretation, $data, $receiptAttributes) {
                     $userCategoryId = $data['category_id'] ?? null;

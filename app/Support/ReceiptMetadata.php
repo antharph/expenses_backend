@@ -2,8 +2,6 @@
 
 namespace App\Support;
 
-use Carbon\CarbonInterface;
-use Illuminate\Support\Carbon;
 use Throwable;
 
 final class ReceiptMetadata
@@ -15,7 +13,7 @@ final class ReceiptMetadata
         public readonly ?array $store,
         public readonly ?string $transactionNumber,
         public readonly ?string $invoiceNumber,
-        public readonly ?CarbonInterface $transactionAt,
+        public readonly ?string $transactionAtRaw,
     ) {}
 
     /**
@@ -39,14 +37,14 @@ final class ReceiptMetadata
             store: $store,
             transactionNumber: self::nullableString($decoded['transaction_number'] ?? null),
             invoiceNumber: self::nullableString($decoded['invoice_number'] ?? null),
-            transactionAt: self::parseTransactionAt($decoded['transaction_at'] ?? null),
+            transactionAtRaw: self::nullableString($decoded['transaction_at'] ?? null),
         );
     }
 
     /**
      * @return array<string, mixed>
      */
-    public function expenseAttributes(?int $storeId): array
+    public function expenseAttributes(?int $storeId, ExpenseTimezone $timezone): array
     {
         $attributes = [];
 
@@ -62,8 +60,15 @@ final class ReceiptMetadata
             $attributes['invoice_number'] = $this->invoiceNumber;
         }
 
-        if ($this->transactionAt !== null) {
-            $attributes['transaction_at'] = $this->transactionAt;
+        if ($this->transactionAtRaw !== null) {
+            try {
+                $attributes['transaction_at'] = ExpenseTransactionAt::fromReceiptIso8601(
+                    $this->transactionAtRaw,
+                    $timezone,
+                );
+            } catch (Throwable) {
+                // Unparseable receipt datetime: omit; Expense model defaults transaction_at on create.
+            }
         }
 
         return $attributes;
@@ -78,19 +83,5 @@ final class ReceiptMetadata
         $trimmed = trim((string) $value);
 
         return $trimmed === '' ? null : $trimmed;
-    }
-
-    private static function parseTransactionAt(mixed $value): ?CarbonInterface
-    {
-        $raw = self::nullableString($value);
-        if ($raw === null) {
-            return null;
-        }
-
-        try {
-            return Carbon::parse($raw);
-        } catch (Throwable) {
-            return null;
-        }
     }
 }

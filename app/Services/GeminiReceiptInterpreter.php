@@ -91,7 +91,7 @@ Also extract receipt-level merchant and transaction details when visible on the 
 - "address": store or branch address as printed. Omit or null when not shown.
 - "transaction_number": receipt or transaction / control number when printed. Omit or null when not shown.
 - "invoice_number": invoice or OR number when printed. Omit or null when not shown.
-- "transaction_at": date and time of purchase in ISO 8601 when the receipt shows a transaction date or datetime (include timezone offset when printed). Omit or null when no transaction date is visible.
+- "transaction_at": date and time of purchase in ISO 8601 when the receipt shows a transaction date or datetime (use the wall-clock time printed on the receipt; omit timezone offset). Omit or null when no transaction date is visible. The API stores this instant in UTC using the authenticated user's timezone.
 
 Allowed categories:
 {$categoriesJson}
@@ -179,7 +179,7 @@ PROMPT;
                         'transaction_at' => [
                             'type' => 'STRING',
                             'nullable' => true,
-                            'description' => 'Transaction date/time in ISO 8601 when visible on the receipt.',
+                            'description' => 'Transaction date/time in ISO 8601 (wall-clock as printed; no timezone offset).',
                         ],
                         'line_items' => [
                             'type' => 'ARRAY',

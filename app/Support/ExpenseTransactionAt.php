@@ -45,6 +45,25 @@ final class ExpenseTransactionAt
     }
 
     /**
+     * Receipt / Gemini {@code transaction_at}: wall-clock components from ISO 8601,
+     * interpreted in the authenticated user's timezone, stored as UTC.
+     */
+    public static function fromReceiptIso8601(string $raw, ExpenseTimezone $timezone): Carbon
+    {
+        $parsed = Carbon::parse($raw);
+
+        return Carbon::create(
+            $parsed->year,
+            $parsed->month,
+            $parsed->day,
+            $parsed->hour,
+            $parsed->minute,
+            $parsed->second,
+            $timezone->name(),
+        )->utc();
+    }
+
+    /**
      * @return array{hour: int, minute: int, second: int}
      */
     private static function parseTime(string $timeHi): array
