@@ -51,6 +51,10 @@ class ExpenseController extends Controller
             $timezone,
         );
 
+        if (isset($validated['category_id'])) {
+            $query->where('category_id', (int) $validated['category_id']);
+        }
+
         $sumTotal = ExpenseAmounts::formatMoney((float) (clone $query)->sum('total'));
         $paginator = $query->paginate($perPage);
 
