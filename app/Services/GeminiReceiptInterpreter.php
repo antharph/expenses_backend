@@ -91,7 +91,9 @@ Also extract receipt-level merchant and transaction details when visible on the 
 - "address": store or branch address as printed. Omit or null when not shown.
 - "transaction_number": receipt or transaction / control number when printed. Omit or null when not shown.
 - "invoice_number": invoice or OR number when printed. Omit or null when not shown.
-- "transaction_at": date and time of purchase in ISO 8601 when the receipt shows a transaction date or datetime (use the wall-clock time printed on the receipt; omit timezone offset). Omit or null when no transaction date is visible. The API stores this instant in UTC using the authenticated user's timezone.
+- "transaction_at": date and time of the purchase transaction in ISO 8601 (wall-clock time as printed on the receipt; omit timezone offset). Omit or null when no transaction date is visible.
+
+Receipts often print many dates or none at all. Only extract the date/time of the actual purchase—the one paired with the OR/invoice number, transaction number, line items, or printed clock time. Do NOT use PTU/permit issued dates, BIR/tax registration dates, machine serial or installation dates, copyright years, expiry dates, or other administrative dates. When several candidates exist, choose the one clearly tied to this sale; when none clearly indicates the purchase moment, omit or null. The API stores this instant in UTC using the authenticated user's timezone; dates more than 15 days before upload are replaced with the user's current local datetime.
 
 Allowed categories:
 {$categoriesJson}
@@ -179,7 +181,7 @@ PROMPT;
                         'transaction_at' => [
                             'type' => 'STRING',
                             'nullable' => true,
-                            'description' => 'Transaction date/time in ISO 8601 (wall-clock as printed; no timezone offset).',
+                            'description' => 'Purchase transaction date/time in ISO 8601 (wall-clock as printed; no timezone offset). Ignore permit, registration, and other non-transaction dates. Null when no clear purchase date/time is visible.',
                         ],
                         'line_items' => [
                             'type' => 'ARRAY',

@@ -62,7 +62,7 @@ final class ReceiptMetadata
 
         if ($this->transactionAtRaw !== null) {
             try {
-                $attributes['transaction_at'] = ExpenseTransactionAt::fromReceiptIso8601(
+                $attributes['transaction_at'] = ExpenseTransactionAt::fromReceiptIso8601OrNowWhenStale(
                     $this->transactionAtRaw,
                     $timezone,
                 );
