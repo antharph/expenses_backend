@@ -24,7 +24,7 @@ class StoreExpenseRequest extends FormRequest
             'item' => [Rule::requiredIf(! $hasReceipt), 'nullable', 'string', 'max:255'],
             'quantity' => [Rule::requiredIf(! $hasReceipt), 'nullable', 'integer', 'min:1'],
             'price' => [Rule::requiredIf(! $hasReceipt), 'nullable', 'numeric', 'min:0'],
-            'category_id' => ['nullable', 'integer', Rule::exists('categories', 'id')],
+            'category_id' => ['required', 'integer', Rule::exists('categories', 'id')],
         ];
     }
 }
