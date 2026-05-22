@@ -95,8 +95,8 @@ Creates a budget for the authenticated user.
 | --- | --- |
 | `name` | Required string, max 255. |
 | `amount` | Required numeric amount greater than 0. |
-| `reset_type` | Required. One of `date_fixed`, `interval`, or `manual`. |
-| `reset_days` | Required for `date_fixed` and `interval`; omit or `null` for `manual`. Fixed-date days must be `1`–`31`; interval budgets require exactly one day count. |
+| `reset_type` | Required. One of `date_fixed` or `manual`. |
+| `reset_days` | Required for `date_fixed`; omit or `null` for `manual`. Fixed-date days must be `1`–`31` and may include multiple selected days. If a selected day does not exist in a month, the budget resets on that month’s final calendar day (for example `31` resets on June 30, February 28, or February 29 in leap years). |
 | `rollover` | Optional boolean, defaults to `false`. |
 | `category_ids` | Required array with at least one existing category ID. A category can belong to only one active budget for the authenticated user. |
 

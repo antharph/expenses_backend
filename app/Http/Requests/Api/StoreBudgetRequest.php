@@ -25,9 +25,15 @@ class StoreBudgetRequest extends FormRequest
         return [
             'name' => ['required', 'string', 'max:255'],
             'amount' => ['required', 'numeric', 'min:0.01'],
-            'reset_type' => ['required', Rule::enum(BudgetResetType::class)],
+            'reset_type' => [
+                'required',
+                Rule::in([
+                    BudgetResetType::DateFixed->value,
+                    BudgetResetType::Manual->value,
+                ]),
+            ],
             'reset_days' => ['nullable', 'array'],
-            'reset_days.*' => ['integer', 'min:1', 'max:366'],
+            'reset_days.*' => ['integer', 'min:1', 'max:31'],
             'rollover' => ['sometimes', 'boolean'],
             'category_ids' => ['required', 'array', 'min:1'],
             'category_ids.*' => ['integer', 'distinct', Rule::exists('categories', 'id')],
@@ -41,7 +47,7 @@ class StoreBudgetRequest extends FormRequest
                 $type = $this->input('reset_type');
                 $days = $this->input('reset_days', []);
 
-                if ($type !== BudgetResetType::Manual->value) {
+                if ($type === BudgetResetType::DateFixed->value) {
                     if (! is_array($days) || $days === []) {
                         $validator->errors()->add(
                             'reset_days',
@@ -49,25 +55,6 @@ class StoreBudgetRequest extends FormRequest
                         );
 
                         return;
-                    }
-
-                    if ($type === BudgetResetType::DateFixed->value) {
-                        foreach ($days as $day) {
-                            if ((int) $day > 31) {
-                                $validator->errors()->add(
-                                    'reset_days',
-                                    'Fixed-date reset days must be between 1 and 31.',
-                                );
-                                break;
-                            }
-                        }
-                    }
-
-                    if ($type === BudgetResetType::Interval->value && count($days) !== 1) {
-                        $validator->errors()->add(
-                            'reset_days',
-                            'Interval budgets require exactly one reset interval.',
-                        );
                     }
                 }
 
