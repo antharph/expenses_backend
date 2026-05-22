@@ -35,6 +35,12 @@ class BudgetLogResource extends JsonResource
             'allocated_amount' => number_format($allocated, 2, '.', ''),
             'spent_amount' => number_format($spent, 2, '.', ''),
             'rollover_amount' => number_format($rollover, 2, '.', ''),
+            'categories' => $this->categories
+                ->map(static fn ($category): array => [
+                    'id' => $category->id,
+                    'name' => $category->name,
+                ])
+                ->values(),
         ];
     }
 

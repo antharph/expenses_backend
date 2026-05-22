@@ -98,13 +98,37 @@ Creates a budget for the authenticated user.
 | `reset_type` | Required. One of `date_fixed`, `interval`, or `manual`. |
 | `reset_days` | Required for `date_fixed` and `interval`; omit or `null` for `manual`. Fixed-date days must be `1`–`31`; interval budgets require exactly one day count. |
 | `rollover` | Optional boolean, defaults to `false`. |
-| `category_ids` | Required array with at least one existing category ID. |
+| `category_ids` | Required array with at least one existing category ID. A category can belong to only one active budget for the authenticated user. |
 
 **201 Created**
 
 Returns the same budget progress resource shape as `GET /api/v1/budgets`. A first `budget_logs` entry is created for the budget’s current active period.
 
 **422 Unprocessable Entity** — validation errors in Laravel format (`errors` object).
+
+**401 Unauthenticated** — missing or invalid token.
+
+---
+
+## PATCH `/api/v1/budgets/{budget}/categories`
+
+Replaces the categories attached to a budget owned by the authenticated user. The budget must keep at least one category, and selected categories cannot already belong to another active budget.
+
+**Body**
+
+```json
+{
+  "category_ids": [1, 2]
+}
+```
+
+**200 OK**
+
+Returns the same budget progress resource shape as `GET /api/v1/budgets`.
+
+**422 Unprocessable Entity** — validation errors in Laravel format (`errors` object), including empty category sets or overlapping category assignments.
+
+**404 Not Found** — budget does not exist or belongs to another user.
 
 **401 Unauthenticated** — missing or invalid token.
 
@@ -125,7 +149,13 @@ Returns **budget cycle history** (`budget_logs`) for one budget, newest period f
       "end_date": "2026-05-15",
       "allocated_amount": "6000.00",
       "spent_amount": "5500.00",
-      "rollover_amount": "500.00"
+      "rollover_amount": "500.00",
+      "categories": [
+        {
+          "id": 1,
+          "name": "Food & drink"
+        }
+      ]
     }
   ]
 }
@@ -134,6 +164,7 @@ Returns **budget cycle history** (`budget_logs`) for one budget, newest period f
 | Field | Meaning |
 | --- | --- |
 | `rollover_amount` | Unused funds from the period: `max(0, allocated_amount − spent_amount)`. |
+| `categories` | Category snapshot saved when a closed period’s `actual_spent` is finalized. The active period may be empty until it is finalized. |
 
 **404 Not Found** — budget does not exist or belongs to another user.
 

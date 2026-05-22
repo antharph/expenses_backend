@@ -381,6 +381,8 @@ class BudgetService
             'actual_spent' => $this->budgetSpentBetween($budget, $log->start_date->copy(), $endDate),
         ])->save();
 
+        $log->categories()->sync($budget->categories->pluck('id')->all());
+
         return $log->refresh();
     }
 

@@ -32,4 +32,12 @@ class Category extends Model
     {
         return $this->belongsToMany(Budget::class);
     }
+
+    /**
+     * @return BelongsToMany<BudgetLog, $this>
+     */
+    public function budgetLogs(): BelongsToMany
+    {
+        return $this->belongsToMany(BudgetLog::class);
+    }
 }

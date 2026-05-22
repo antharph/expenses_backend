@@ -4,6 +4,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 
 class BudgetLog extends Model
 {
@@ -34,5 +35,13 @@ class BudgetLog extends Model
     public function budget(): BelongsTo
     {
         return $this->belongsTo(Budget::class);
+    }
+
+    /**
+     * @return BelongsToMany<Category, $this>
+     */
+    public function categories(): BelongsToMany
+    {
+        return $this->belongsToMany(Category::class);
     }
 }

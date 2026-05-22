@@ -6,6 +6,7 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Api\StoreBudgetRequest;
+use App\Http\Requests\Api\UpdateBudgetCategoriesRequest;
 use App\Http\Resources\BudgetLogResource;
 use App\Http\Resources\BudgetProgressResource;
 use App\Models\Budget;
@@ -72,7 +73,9 @@ class BudgetController extends Controller
         $budget->load([
             'user',
             'categories:id',
-            'logs' => static fn ($query) => $query->orderByDesc('start_date'),
+            'logs' => static fn ($query) => $query
+                ->with('categories:id,name')
+                ->orderByDesc('start_date'),
         ]);
 
         $budget->logs->each(
@@ -80,6 +83,18 @@ class BudgetController extends Controller
         );
 
         return BudgetLogResource::collection($budget->logs)->response();
+    }
+
+    public function updateCategories(
+        UpdateBudgetCategoriesRequest $request,
+        Budget $budget,
+    ): JsonResponse {
+        abort_unless($budget->user_id === $request->user()->id, 404);
+
+        $budget->categories()->sync($request->validated('category_ids'));
+        $budget->load(['user', 'categories:id,name']);
+
+        return (new BudgetProgressResource($budget))->response();
     }
 
     public function destroy(Request $request, Budget $budget): Response

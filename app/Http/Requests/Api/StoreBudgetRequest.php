@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Http\Requests\Api;
 
 use App\Enums\BudgetResetType;
+use App\Models\Budget;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\Validator;
@@ -29,7 +30,7 @@ class StoreBudgetRequest extends FormRequest
             'reset_days.*' => ['integer', 'min:1', 'max:366'],
             'rollover' => ['sometimes', 'boolean'],
             'category_ids' => ['required', 'array', 'min:1'],
-            'category_ids.*' => ['integer', Rule::exists('categories', 'id')],
+            'category_ids.*' => ['integer', 'distinct', Rule::exists('categories', 'id')],
         ];
     }
 
@@ -40,35 +41,52 @@ class StoreBudgetRequest extends FormRequest
                 $type = $this->input('reset_type');
                 $days = $this->input('reset_days', []);
 
-                if ($type === BudgetResetType::Manual->value) {
-                    return;
-                }
+                if ($type !== BudgetResetType::Manual->value) {
+                    if (! is_array($days) || $days === []) {
+                        $validator->errors()->add(
+                            'reset_days',
+                            'Reset days are required for this reset type.',
+                        );
 
-                if (! is_array($days) || $days === []) {
-                    $validator->errors()->add(
-                        'reset_days',
-                        'Reset days are required for this reset type.',
-                    );
+                        return;
+                    }
 
-                    return;
-                }
-
-                if ($type === BudgetResetType::DateFixed->value) {
-                    foreach ($days as $day) {
-                        if ((int) $day > 31) {
-                            $validator->errors()->add(
-                                'reset_days',
-                                'Fixed-date reset days must be between 1 and 31.',
-                            );
-                            break;
+                    if ($type === BudgetResetType::DateFixed->value) {
+                        foreach ($days as $day) {
+                            if ((int) $day > 31) {
+                                $validator->errors()->add(
+                                    'reset_days',
+                                    'Fixed-date reset days must be between 1 and 31.',
+                                );
+                                break;
+                            }
                         }
+                    }
+
+                    if ($type === BudgetResetType::Interval->value && count($days) !== 1) {
+                        $validator->errors()->add(
+                            'reset_days',
+                            'Interval budgets require exactly one reset interval.',
+                        );
                     }
                 }
 
-                if ($type === BudgetResetType::Interval->value && count($days) !== 1) {
+                $categoryIds = $this->input('category_ids', []);
+                if (! is_array($categoryIds) || $categoryIds === []) {
+                    return;
+                }
+
+                $overlappingBudget = Budget::query()
+                    ->where('user_id', $this->user()?->id)
+                    ->whereHas('categories', static function ($query) use ($categoryIds): void {
+                        $query->whereIn('categories.id', $categoryIds);
+                    })
+                    ->exists();
+
+                if ($overlappingBudget) {
                     $validator->errors()->add(
-                        'reset_days',
-                        'Interval budgets require exactly one reset interval.',
+                        'category_ids',
+                        'One or more selected categories are already assigned to another active budget.',
                     );
                 }
             },
