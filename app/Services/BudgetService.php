@@ -192,6 +192,61 @@ class BudgetService
         ]);
     }
 
+    public function createInitialManualCycleLog(Budget $budget, CarbonInterface $startDate): BudgetLog
+    {
+        $budget->loadMissing('user');
+        $timezone = $budget->user?->displayTimezone() ?? 'UTC';
+        $periodStart = Carbon::parse($startDate->toDateString(), $timezone)->startOfDay();
+
+        return $budget->logs()->create([
+            'start_date' => $periodStart,
+            'end_date' => null,
+            'allocated_amount' => $this->formatMoney($budget->amount),
+            'actual_spent' => '0.00',
+        ]);
+    }
+
+    public function finalizeManualCycle(Budget $budget): BudgetLog
+    {
+        if ($this->resetType($budget) !== BudgetResetType::Manual) {
+            throw new InvalidArgumentException('Only manual budgets can be finalized manually.');
+        }
+
+        $budget->loadMissing(['categories:id', 'user']);
+
+        return DB::transaction(function () use ($budget): BudgetLog {
+            Budget::query()->whereKey($budget->id)->lockForUpdate()->firstOrFail();
+
+            $lastLog = $budget->logs()
+                ->latest('start_date')
+                ->lockForUpdate()
+                ->first();
+
+            if ($lastLog === null) {
+                return $this->ensureCurrentCycleLog($budget);
+            }
+
+            $lastLog = $this->finalizeLogSpend($budget, $lastLog);
+            $rolloverAmount = $budget->rollover
+                ? max(0.0, (float) $lastLog->allocated_amount - (float) $lastLog->actual_spent)
+                : 0.0;
+
+            $timezone = $budget->user?->displayTimezone() ?? 'UTC';
+            $startDate = $lastLog->end_date
+                ->copy()
+                ->timezone($timezone)
+                ->addDay()
+                ->startOfDay();
+
+            return $budget->logs()->create([
+                'start_date' => $startDate,
+                'end_date' => null,
+                'allocated_amount' => $this->formatMoney((float) $budget->amount + $rolloverAmount),
+                'actual_spent' => '0.00',
+            ]);
+        });
+    }
+
     public function ensureCurrentCycleLog(Budget $budget): BudgetLog
     {
         $budget->loadMissing(['categories:id', 'user']);
@@ -525,14 +580,14 @@ class BudgetService
     {
         $latestLog = $budget->logs->sortByDesc('start_date')->first();
 
-        return $latestLog?->start_date?->copy() ?? $budget->created_at->copy();
+        return $this->asMutableCarbon($latestLog?->start_date ?? $budget->created_at);
     }
 
     private function manualStartDate(Budget $budget): Carbon
     {
         $latestLog = $budget->logs->sortByDesc('start_date')->first();
 
-        return $latestLog?->start_date?->copy() ?? $budget->created_at->copy();
+        return $this->asMutableCarbon($latestLog?->start_date ?? $budget->created_at);
     }
 
     private function resetType(Budget $budget): BudgetResetType
@@ -545,5 +600,12 @@ class BudgetService
     private function formatMoney(float|int|string|null $amount): string
     {
         return number_format((float) ($amount ?? 0), 2, '.', '');
+    }
+
+    private function asMutableCarbon(CarbonInterface $date): Carbon
+    {
+        return $date instanceof Carbon
+            ? $date->copy()
+            : Carbon::instance($date);
     }
 }

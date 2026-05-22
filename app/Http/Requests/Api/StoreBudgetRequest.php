@@ -34,6 +34,7 @@ class StoreBudgetRequest extends FormRequest
             ],
             'reset_days' => ['nullable', 'array'],
             'reset_days.*' => ['integer', 'min:1', 'max:31'],
+            'start_date' => ['nullable', 'date_format:Y-m-d'],
             'rollover' => ['sometimes', 'boolean'],
             'category_ids' => ['required', 'array', 'min:1'],
             'category_ids.*' => ['integer', 'distinct', Rule::exists('categories', 'id')],
@@ -56,6 +57,20 @@ class StoreBudgetRequest extends FormRequest
 
                         return;
                     }
+
+                    if ($this->filled('start_date')) {
+                        $validator->errors()->add(
+                            'start_date',
+                            'Start date is only used for manual budgets.',
+                        );
+                    }
+                }
+
+                if ($type === BudgetResetType::Manual->value && ! $this->filled('start_date')) {
+                    $validator->errors()->add(
+                        'start_date',
+                        'A start date is required for manual budgets.',
+                    );
                 }
 
                 $categoryIds = $this->input('category_ids', []);

@@ -24,6 +24,8 @@ Route::prefix('v1')->group(function (): void {
         Route::post('/budgets', [BudgetController::class, 'store']);
         Route::get('/budgets/{budget}/logs', [BudgetController::class, 'logs'])
             ->whereNumber('budget');
+        Route::post('/budgets/{budget}/finalize', [BudgetController::class, 'finalizeManual'])
+            ->whereNumber('budget');
         Route::patch('/budgets/{budget}/categories', [BudgetController::class, 'updateCategories'])
             ->whereNumber('budget');
         Route::delete('/budgets/{budget}', [BudgetController::class, 'destroy'])

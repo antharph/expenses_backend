@@ -6,6 +6,7 @@ namespace App\Http\Resources;
 
 use App\Models\Budget;
 use App\Services\BudgetService;
+use BackedEnum;
 use Carbon\CarbonInterface;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
@@ -28,6 +29,9 @@ class BudgetProgressResource extends JsonResource
         return [
             'id' => $budget->id,
             'name' => $budget->name,
+            'reset_type' => $budget->reset_type instanceof BackedEnum
+                ? $budget->reset_type->value
+                : $budget->reset_type,
             'rollover_enabled' => (bool) $budget->rollover,
             'period' => [
                 'start_date' => $this->formatDate($progress->start_date, $timezone),

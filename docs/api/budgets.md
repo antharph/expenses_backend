@@ -18,6 +18,7 @@ Lists the authenticated user’s budgets with **current pay-period progress** fo
     {
       "id": 1,
       "name": "Home Budget",
+      "reset_type": "date_fixed",
       "rollover_enabled": true,
       "period": {
         "start_date": "2026-05-16",
@@ -43,6 +44,7 @@ Lists the authenticated user’s budgets with **current pay-period progress** fo
 
 | Field | Meaning |
 | --- | --- |
+| `reset_type` | Budget cycle mode: `date_fixed` or `manual`. |
 | `base_amount` | Configured budget amount for the period (`budgets.amount`). |
 | `rollover_amount` | Portion of `allocated_amount` above `base_amount` (from the current period log when present). |
 | `allocated_amount` | Spendable total for the period (`base` + `rollover` when a log exists). |
@@ -86,6 +88,7 @@ Creates a budget for the authenticated user.
   "amount": "5000.00",
   "reset_type": "date_fixed",
   "reset_days": [1, 16],
+  "start_date": null,
   "rollover": true,
   "category_ids": [1, 2]
 }
@@ -97,6 +100,7 @@ Creates a budget for the authenticated user.
 | `amount` | Required numeric amount greater than 0. |
 | `reset_type` | Required. One of `date_fixed` or `manual`. |
 | `reset_days` | Required for `date_fixed`; omit or `null` for `manual`. Fixed-date days must be `1`–`31` and may include multiple selected days. If a selected day does not exist in a month, the budget resets on that month’s final calendar day (for example `31` resets on June 30, February 28, or February 29 in leap years). |
+| `start_date` | Required for `manual`; omit or `null` for `date_fixed`. Calendar date (`YYYY-MM-DD`) used as the first open `budget_logs.start_date`. |
 | `rollover` | Optional boolean, defaults to `false`. |
 | `category_ids` | Required array with at least one existing category ID. A category can belong to only one active budget for the authenticated user. |
 
@@ -105,6 +109,22 @@ Creates a budget for the authenticated user.
 Returns the same budget progress resource shape as `GET /api/v1/budgets`. A first `budget_logs` entry is created for the budget’s current active period.
 
 **422 Unprocessable Entity** — validation errors in Laravel format (`errors` object).
+
+**401 Unauthenticated** — missing or invalid token.
+
+---
+
+## POST `/api/v1/budgets/{budget}/finalize`
+
+Manually closes the current period for a `manual` budget, writes `budget_logs.end_date` and `actual_spent`, then opens the next manual period starting on the following calendar day. Rollover is applied to the next period when enabled.
+
+**200 OK**
+
+Returns the same budget progress resource shape as `GET /api/v1/budgets`.
+
+**404 Not Found** — budget does not exist or belongs to another user.
+
+**422 Unprocessable Entity** — budget is not a `manual` budget.
 
 **401 Unauthenticated** — missing or invalid token.
 

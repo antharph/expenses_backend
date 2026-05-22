@@ -12,6 +12,8 @@ use App\Http\Resources\BudgetProgressResource;
 use App\Models\Budget;
 use App\Models\BudgetLog;
 use App\Services\BudgetService;
+use BackedEnum;
+use Carbon\Carbon;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
@@ -46,7 +48,15 @@ class BudgetController extends Controller
 
         $budget->categories()->sync($validated['category_ids']);
         $budget->load(['user', 'categories:id,name']);
-        $budgetService->ensureCurrentCycleLog($budget);
+
+        if ($resetType === 'manual') {
+            $budgetService->createInitialManualCycleLog(
+                $budget,
+                Carbon::parse($validated['start_date'], $request->user()->displayTimezone()),
+            );
+        } else {
+            $budgetService->ensureCurrentCycleLog($budget);
+        }
 
         return (new BudgetProgressResource($budget))
             ->response()
@@ -83,6 +93,24 @@ class BudgetController extends Controller
         );
 
         return BudgetLogResource::collection($budget->logs)->response();
+    }
+
+    public function finalizeManual(Request $request, Budget $budget, BudgetService $budgetService): JsonResponse
+    {
+        abort_unless($budget->user_id === $request->user()->id, 404);
+        $resetType = $budget->reset_type instanceof BackedEnum
+            ? $budget->reset_type->value
+            : $budget->reset_type;
+        abort_unless(
+            $resetType === 'manual',
+            422,
+            'Only manual budgets can be finalized manually.',
+        );
+
+        $budget->load(['user', 'categories:id,name']);
+        $budgetService->finalizeManualCycle($budget);
+
+        return (new BudgetProgressResource($budget->refresh()->load(['user', 'categories:id,name'])))->response();
     }
 
     public function updateCategories(
