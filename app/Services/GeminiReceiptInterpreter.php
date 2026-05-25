@@ -62,6 +62,9 @@ You are parsing a purchase receipt or invoice image for an expense tracker.
 
 You will be given a JSON array of allowed categories. Each element has "id" (integer), "name" (string), and optionally "description" (string) with extra guidance for when to use that category. You MUST NOT invent category ids: every category_id you output must either be null or exactly match one of the provided ids.
 
+CATEGORY CLASSIFICATION GUIDANCE:
+- Be precise and intelligent when selecting a category. Do not default to "Miscellaneous" (or similar general category) or null if a more specific category from the allowed list clearly fits.
+
 For every expense row (top-level summary and each line item), extract or infer:
 - "quantity": integer count of units (minimum 1). Use 1 when the receipt shows a single unit or only a line total with no count.
 - "price": unit price per item (before tax on that line, when shown). Numbers only, no currency symbol.
@@ -74,14 +77,18 @@ These three fields MUST be mathematically consistent: total = quantity × price,
 
 Return a JSON object with:
 - "item": short summary of the whole purchase (merchant + scope), max ~200 characters.
-- "quantity", "price", "total": for the overall receipt when there is no per-line breakdown (see line_items rule below).
+- "quantity", "price", "total": the overall receipt total, quantity, and unit price. The "total" MUST represent the final total amount paid on the receipt.
 - "category_id": integer or null — the single best category from the allowed list for the overall receipt, or null if none clearly fits.
 - "line_items": array (may be empty). For each distinct purchasable line on the receipt, include an object with:
   - "item": line description (what was bought on that line).
   - "quantity", "price", "total" as defined above (include every field you can read or derive).
   - "category_id": integer from the allowed list for that line, or null if no category clearly fits that line.
 
-If the receipt clearly lists multiple product or service lines with individual amounts, fill "line_items" with one entry per line and assign category_id per line when possible. Skip rows that are only tax, tips, or duplicate subtotals that are not themselves line items. If there is only a single total with no meaningful per-line breakdown, use an empty array for "line_items" and put quantity, price, and total on the top-level object together with item and category_id.
+LINE ITEMS & TOTAL RECONCILIATION RULES:
+1. TOTAL RECONCILIATION: The sum of the "total" values of all objects in the "line_items" array MUST exactly equal the overall receipt "total" (the final total amount paid). If there are taxes, service charges, delivery fees, or discounts, distribute them proportionally across the line items' unit prices and totals so that their sum matches the final receipt total, or include them as separate line items (e.g. "Tax", "Service Charge", "Delivery Fee") if they are significant.
+2. SUB-ITEMS / INCLUSIONS / MODIFIERS: Look closely at the receipt layout to identify sub-options, modifiers, or inclusion details listed below a parent item (e.g., choice of side, drink, or ingredients for a combo or meal option like "Value Meal 1" followed by "Steamed Fried Rice", "VM Buchi", etc., which typically do NOT have their own separate prices or are listed as 0.00 / blank). Do NOT treat these inclusions or options as separate line items. Instead, append their details next to the parent item name separated by a comma (e.g., "Value Meal 1, Steamed Fried Rice, VM Wanton Chips, VM Buchi, VM P Juice"). The final merged name of the line item must be concise and must not exceed 255 characters.
+
+If the receipt clearly lists multiple product or service lines with individual amounts, fill "line_items" with one entry per line and assign category_id per line when possible. Skip rows that are only tax, tips, or duplicate subtotals that are not themselves line items, unless needed to reconcile the total. If there is only a single total with no meaningful per-line breakdown, use an empty array for "line_items" and put quantity, price, and total on the top-level object together with item and category_id.
 
 If multiple currencies appear, use the currency and amounts that correspond to the total to pay.
 
@@ -113,7 +120,7 @@ PROMPT;
             'total' => [
                 'type' => 'NUMBER',
                 'nullable' => true,
-                'description' => 'Line extension (quantity × unit price). Omit only if unknown; derive when possible.',
+                'description' => 'Line extension (quantity × unit price). Omit only if unknown; must be mathematically consistent. Sum of all line item totals must equal the overall receipt total.',
             ],
         ];
 
@@ -185,13 +192,13 @@ PROMPT;
                         ],
                         'line_items' => [
                             'type' => 'ARRAY',
-                            'description' => 'Per-line items when the receipt lists multiple lines with amounts.',
+                            'description' => 'Per-line items when the receipt lists multiple lines with amounts. The sum of all line item totals must equal the overall receipt total.',
                             'items' => [
                                 'type' => 'OBJECT',
                                 'properties' => [
                                     'item' => [
                                         'type' => 'STRING',
-                                        'description' => 'Line item description.',
+                                        'description' => 'Line item description. Append sub-options/inclusions (separated by a comma, e.g. "Value Meal 1, Steamed fried rice") next to the item name, max 255 chars.',
                                     ],
                                     ...$amountFields,
                                     'category_id' => [
