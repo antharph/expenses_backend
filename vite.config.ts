@@ -48,6 +48,7 @@ export default defineConfig(({ mode }) => {
             }),
             wayfinder({
                 formVariants: true,
+                command: 'docker exec -w /var/www/expenses codev_php8.4-webserver-4 php artisan wayfinder:generate',
             }),
         ],
     };
