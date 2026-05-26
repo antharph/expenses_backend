@@ -2,7 +2,7 @@
 
 Base path: **`/api/v1`**. Requires **`Authorization: Bearer {token}`** (Sanctum).
 
-Amount fields are decimal strings with two fractional digits (e.g. `"5000.00"`). Dates in `period` and log entries are **calendar dates** in the user’s display timezone (`YYYY-MM-DD`).
+Amount fields are decimal strings with two fractional digits (e.g. `"5000.00"`) or `null` for tracking-only budgets (no limit). Dates in `period` and log entries are **calendar dates** in the user’s display timezone (`YYYY-MM-DD`).
 
 ---
 
@@ -45,12 +45,12 @@ Lists the authenticated user’s budgets with **current pay-period progress** fo
 | Field | Meaning |
 | --- | --- |
 | `reset_type` | Budget cycle mode: `date_fixed` or `manual`. |
-| `base_amount` | Configured budget amount for the period (`budgets.amount`). |
-| `rollover_amount` | Portion of `allocated_amount` above `base_amount` (from the current period log when present). |
-| `allocated_amount` | Spendable total for the period (`base` + `rollover` when a log exists). |
+| `base_amount` | Configured budget amount for the period (`budgets.amount`). `null` for tracking-only budgets. |
+| `rollover_amount` | Portion of `allocated_amount` above `base_amount` (from the current period log when present). `null` for tracking-only budgets. |
+| `allocated_amount` | Spendable total for the period (`base` + `rollover` when a log exists). `null` for tracking-only budgets. |
 | `spent_amount` | Sum of linked category expenses in the current period. |
-| `remaining_amount` | `allocated_amount − spent_amount` (may be negative when over budget). |
-| `is_over_budget` | `true` when `spent_amount` exceeds `allocated_amount`. |
+| `remaining_amount` | `allocated_amount − spent_amount` (may be negative when over budget). `null` for tracking-only budgets. |
+| `is_over_budget` | `true` when `spent_amount` exceeds `allocated_amount`. Always `false` for tracking-only budgets. |
 | `categories` | Categories attached to the budget. Budgets must have at least one category. |
 
 **401 Unauthenticated** — missing or invalid token.
@@ -97,11 +97,11 @@ Creates a budget for the authenticated user.
 | Field | Rules |
 | --- | --- |
 | `name` | Required string, max 255. |
-| `amount` | Required numeric amount greater than 0. |
+| `amount` | Optional numeric amount greater than 0. Omit or `null` for a tracking-only budget (no spending limit). |
 | `reset_type` | Required. One of `date_fixed` or `manual`. |
 | `reset_days` | Required for `date_fixed`; omit or `null` for `manual`. Fixed-date days must be `1`–`31` and may include multiple selected days. If a selected day does not exist in a month, the budget resets on that month’s final calendar day (for example `31` resets on June 30, February 28, or February 29 in leap years). |
 | `start_date` | Required for `manual`; omit or `null` for `date_fixed`. Calendar date (`YYYY-MM-DD`) used as the first open `budget_logs.start_date`. |
-| `rollover` | Optional boolean, defaults to `false`. |
+| `rollover` | Optional boolean, defaults to `false`. Ignored (forced `false`) when `amount` is `null`. |
 | `category_ids` | Required array with at least one existing category ID. A category can belong to only one active budget for the authenticated user. |
 
 **201 Created**

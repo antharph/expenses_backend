@@ -65,20 +65,36 @@ class BudgetService
      * @return object{
      *     start_date: Carbon,
      *     end_date: Carbon|null,
-     *     base_amount: string,
-     *     rollover_amount: string,
-     *     allocated_amount: string,
+     *     base_amount: string|null,
+     *     rollover_amount: string|null,
+     *     allocated_amount: string|null,
      *     amount_spent: string,
-     *     amount_remaining: string,
-     *     percentage_spent: float,
+     *     amount_remaining: string|null,
+     *     percentage_spent: float|null,
      *     is_over_budget: bool
      * }
      */
     public function getBudgetProgress(Budget $budget): object
     {
         $status = $this->getCurrentBudgetStatus($budget->id);
-        $baseAmount = $this->formatMoney($budget->amount);
+        $isTrackingOnly = $budget->amount === null;
         $periodStart = $status->start_date->copy()->startOfDay();
+
+        if ($isTrackingOnly) {
+            return (object) [
+                'start_date' => $status->start_date,
+                'end_date' => $status->end_date,
+                'base_amount' => null,
+                'rollover_amount' => null,
+                'allocated_amount' => null,
+                'amount_spent' => $status->amount_spent,
+                'amount_remaining' => null,
+                'percentage_spent' => null,
+                'is_over_budget' => false,
+            ];
+        }
+
+        $baseAmount = $this->formatMoney($budget->amount);
 
         $currentLog = $budget->logs()
             ->where('start_date', '>=', $periodStart->copy()->utc())
@@ -86,7 +102,7 @@ class BudgetService
             ->orderByDesc('start_date')
             ->first();
 
-        $allocatedAmount = $currentLog !== null
+        $allocatedAmount = $currentLog !== null && $currentLog->allocated_amount !== null
             ? $this->formatMoney($currentLog->allocated_amount)
             : $baseAmount;
 
@@ -150,9 +166,10 @@ class BudgetService
             );
         }
 
-        $totalBudget = $this->formatMoney($budget->amount);
-        $amountRemaining = $this->formatMoney((float) $totalBudget - (float) $amountSpent);
-        $percentageSpent = (float) $totalBudget > 0.0
+        $isTrackingOnly = $budget->amount === null;
+        $totalBudget = $isTrackingOnly ? null : $this->formatMoney($budget->amount);
+        $amountRemaining = $isTrackingOnly ? null : $this->formatMoney((float) $totalBudget - (float) $amountSpent);
+        $percentageSpent = ! $isTrackingOnly && (float) $totalBudget > 0.0
             ? round(((float) $amountSpent / (float) $totalBudget) * 100, 2)
             : 0.0;
 
@@ -184,10 +201,14 @@ class BudgetService
 
         $startDate = $this->getNextStartDate($budget, $lastLog);
 
+        $allocatedAmount = $budget->amount !== null
+            ? $this->formatMoney((float) $budget->amount + $rolloverAmount)
+            : null;
+
         return $budget->logs()->create([
             'start_date' => $startDate,
             'end_date' => $this->getNextEndDate($budget, $startDate),
-            'allocated_amount' => $this->formatMoney((float) $budget->amount + $rolloverAmount),
+            'allocated_amount' => $allocatedAmount,
             'actual_spent' => '0.00',
         ]);
     }
@@ -201,7 +222,9 @@ class BudgetService
         return $budget->logs()->create([
             'start_date' => $periodStart,
             'end_date' => null,
-            'allocated_amount' => $this->formatMoney($budget->amount),
+            'allocated_amount' => $budget->amount !== null
+                ? $this->formatMoney($budget->amount)
+                : null,
             'actual_spent' => '0.00',
         ]);
     }
@@ -238,10 +261,14 @@ class BudgetService
                 ->addDay()
                 ->startOfDay();
 
+            $allocatedAmount = $budget->amount !== null
+                ? $this->formatMoney((float) $budget->amount + $rolloverAmount)
+                : null;
+
             return $budget->logs()->create([
                 'start_date' => $startDate,
                 'end_date' => null,
-                'allocated_amount' => $this->formatMoney((float) $budget->amount + $rolloverAmount),
+                'allocated_amount' => $allocatedAmount,
                 'actual_spent' => '0.00',
             ]);
         });
@@ -268,7 +295,9 @@ class BudgetService
             return $budget->logs()->create([
                 'start_date' => $periodStart,
                 'end_date' => $this->getNextEndDate($budget, $periodStart),
-                'allocated_amount' => $this->formatMoney($budget->amount),
+                'allocated_amount' => $budget->amount !== null
+                    ? $this->formatMoney($budget->amount)
+                    : null,
                 'actual_spent' => '0.00',
             ]);
         });
@@ -347,10 +376,14 @@ class BudgetService
                 );
             }
 
+            $allocatedAmount = $budget->amount !== null
+                ? $this->formatMoney((float) $budget->amount + $rolloverAmount)
+                : null;
+
             return $budget->logs()->create([
                 'start_date' => $currentPeriodStart,
                 'end_date' => $this->getNextEndDate($budget, $currentPeriodStart),
-                'allocated_amount' => $this->formatMoney((float) $budget->amount + $rolloverAmount),
+                'allocated_amount' => $allocatedAmount,
                 'actual_spent' => '0.00',
             ]);
         });

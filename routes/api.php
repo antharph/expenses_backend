@@ -5,6 +5,7 @@ use App\Http\Controllers\Api\Auth\LoginController;
 use App\Http\Controllers\Api\Auth\LogoutController;
 use App\Http\Controllers\Api\Auth\RegisterController;
 use App\Http\Controllers\Api\BudgetController;
+use App\Http\Controllers\Api\BudgetTypeController;
 use App\Http\Controllers\Api\CategoryController;
 use App\Http\Controllers\Api\DashboardController;
 use App\Http\Controllers\Api\ExpenseController;
@@ -19,6 +20,7 @@ Route::prefix('v1')->group(function (): void {
         Route::get('/dashboard', DashboardController::class);
         Route::post('/logout', LogoutController::class);
         Route::get('/categories', [CategoryController::class, 'index']);
+        Route::get('/budget-types', [BudgetTypeController::class, 'index']);
         Route::get('/budgets', [BudgetController::class, 'index']);
         Route::post('/budgets/sync-cycles', [BudgetController::class, 'syncCycles']);
         Route::post('/budgets', [BudgetController::class, 'store']);

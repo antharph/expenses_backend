@@ -19,12 +19,18 @@ class BudgetLogResource extends JsonResource
     public function toArray(Request $request): array
     {
         $timezone = $this->budget?->user?->displayTimezone() ?? 'UTC';
-        $allocated = (float) $this->allocated_amount;
+        $allocated = $this->allocated_amount !== null ? (float) $this->allocated_amount : null;
         $budget = $this->budget;
         $spent = $budget !== null
             ? (float) app(BudgetService::class)->getLogSpentAmount($budget, $this->resource)
             : (float) $this->actual_spent;
-        $rollover = max(0.0, $allocated - $spent);
+
+        $allocatedFormatted = $allocated !== null
+            ? number_format($allocated, 2, '.', '')
+            : null;
+        $rollover = $allocated !== null
+            ? number_format(max(0.0, $allocated - $spent), 2, '.', '')
+            : null;
 
         return [
             'id' => $this->id,
@@ -32,9 +38,9 @@ class BudgetLogResource extends JsonResource
             'end_date' => $this->end_date !== null
                 ? $this->formatDate($this->end_date, $timezone)
                 : null,
-            'allocated_amount' => number_format($allocated, 2, '.', ''),
+            'allocated_amount' => $allocatedFormatted,
             'spent_amount' => number_format($spent, 2, '.', ''),
-            'rollover_amount' => number_format($rollover, 2, '.', ''),
+            'rollover_amount' => $rollover,
             'categories' => $this->categories
                 ->map(static fn ($category): array => [
                     'id' => $category->id,

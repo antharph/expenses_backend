@@ -24,7 +24,7 @@ class BudgetController extends Controller
     {
         $budgets = $request->user()
             ->budgets()
-            ->with(['user', 'categories:id,name'])
+            ->with(['user', 'categories:id,name', 'budgetType'])
             ->orderBy('name')
             ->get();
 
@@ -38,7 +38,8 @@ class BudgetController extends Controller
 
         $budget = $request->user()->budgets()->create([
             'name' => $validated['name'],
-            'amount' => $validated['amount'],
+            'amount' => $validated['amount'] ?? null,
+            'budget_type_id' => $validated['budget_type_id'],
             'reset_type' => $resetType,
             'reset_days' => $resetType === 'manual'
                 ? null
@@ -47,7 +48,7 @@ class BudgetController extends Controller
         ]);
 
         $budget->categories()->sync($validated['category_ids']);
-        $budget->load(['user', 'categories:id,name']);
+        $budget->load(['user', 'categories:id,name', 'budgetType']);
 
         if ($resetType === 'manual') {
             $budgetService->createInitialManualCycleLog(
@@ -69,7 +70,7 @@ class BudgetController extends Controller
 
         $budgets = $request->user()
             ->budgets()
-            ->with(['user', 'categories:id,name'])
+            ->with(['user', 'categories:id,name', 'budgetType'])
             ->orderBy('name')
             ->get();
 
@@ -107,10 +108,10 @@ class BudgetController extends Controller
             'Only manual budgets can be finalized manually.',
         );
 
-        $budget->load(['user', 'categories:id,name']);
+        $budget->load(['user', 'categories:id,name', 'budgetType']);
         $budgetService->finalizeManualCycle($budget);
 
-        return (new BudgetProgressResource($budget->refresh()->load(['user', 'categories:id,name'])))->response();
+        return (new BudgetProgressResource($budget->refresh()->load(['user', 'categories:id,name', 'budgetType'])))->response();
     }
 
     public function updateCategories(
@@ -120,7 +121,7 @@ class BudgetController extends Controller
         abort_unless($budget->user_id === $request->user()->id, 404);
 
         $budget->categories()->sync($request->validated('category_ids'));
-        $budget->load(['user', 'categories:id,name']);
+        $budget->load(['user', 'categories:id,name', 'budgetType']);
 
         return (new BudgetProgressResource($budget))->response();
     }

@@ -29,6 +29,8 @@ class BudgetProgressResource extends JsonResource
         return [
             'id' => $budget->id,
             'name' => $budget->name,
+            'budget_type_id' => $budget->budget_type_id,
+            'budget_type_code' => $budget->budgetType?->code,
             'reset_type' => $budget->reset_type instanceof BackedEnum
                 ? $budget->reset_type->value
                 : $budget->reset_type,

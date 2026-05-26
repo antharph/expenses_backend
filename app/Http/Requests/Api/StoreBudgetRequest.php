@@ -23,8 +23,9 @@ class StoreBudgetRequest extends FormRequest
     public function rules(): array
     {
         return [
+            'budget_type_id' => ['required', 'integer', Rule::exists('budget_types', 'id')],
             'name' => ['required', 'string', 'max:255'],
-            'amount' => ['required', 'numeric', 'min:0.01'],
+            'amount' => ['nullable', 'numeric', 'min:0.01'],
             'reset_type' => [
                 'required',
                 Rule::in([
@@ -45,6 +46,25 @@ class StoreBudgetRequest extends FormRequest
     {
         return [
             function (Validator $validator): void {
+                $budgetTypeId = $this->input('budget_type_id');
+                if ($budgetTypeId === null) {
+                    return;
+                }
+
+                $budgetType = \App\Models\BudgetType::find($budgetTypeId);
+                if ($budgetType) {
+                    if ($budgetType->code === 'budget') {
+                        if (! $this->filled('amount')) {
+                            $validator->errors()->add('amount', 'The amount field is required for Budget type.');
+                        }
+                    } elseif ($budgetType->code === 'tracking') {
+                        if ($this->filled('amount')) {
+                            $validator->errors()->add('amount', 'The amount must be empty for Tracking type.');
+                        }
+                        $this->merge(['amount' => null, 'rollover' => false]);
+                    }
+                }
+
                 $type = $this->input('reset_type');
                 $days = $this->input('reset_days', []);
 
@@ -80,6 +100,7 @@ class StoreBudgetRequest extends FormRequest
 
                 $overlappingBudget = Budget::query()
                     ->where('user_id', $this->user()?->id)
+                    ->where('budget_type_id', $budgetTypeId)
                     ->whereHas('categories', static function ($query) use ($categoryIds): void {
                         $query->whereIn('categories.id', $categoryIds);
                     })

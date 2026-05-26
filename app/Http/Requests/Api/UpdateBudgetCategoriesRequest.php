@@ -38,9 +38,13 @@ class UpdateBudgetCategoriesRequest extends FormRequest
 
                 $budget = $this->route('budget');
                 $budgetId = $budget instanceof Budget ? $budget->id : null;
+                $budgetTypeId = $budget instanceof Budget ? $budget->budget_type_id : null;
 
                 $overlappingBudget = Budget::query()
                     ->where('user_id', $this->user()?->id)
+                    ->when($budgetTypeId !== null, static function ($query) use ($budgetTypeId): void {
+                        $query->where('budget_type_id', $budgetTypeId);
+                    })
                     ->when($budgetId !== null, static function ($query) use ($budgetId): void {
                         $query->whereKeyNot($budgetId);
                     })

@@ -15,6 +15,7 @@ class Budget extends Model
      */
     protected $fillable = [
         'user_id',
+        'budget_type_id',
         'name',
         'amount',
         'reset_type',
@@ -38,6 +39,11 @@ class Budget extends Model
     public function user(): BelongsTo
     {
         return $this->belongsTo(User::class);
+    }
+
+    public function budgetType(): BelongsTo
+    {
+        return $this->belongsTo(BudgetType::class);
     }
 
     /**
