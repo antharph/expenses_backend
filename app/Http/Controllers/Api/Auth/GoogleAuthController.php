@@ -46,9 +46,7 @@ class GoogleAuthController extends Controller
         if (! $user) {
             $user = User::query()->where('email', $email)->first();
 
-            if ($user) {
-                $user->forceFill(['firebase_uid' => $firebaseUid])->save();
-            } else {
+            if (! $user) {
                 $user = User::query()->create([
                     'name' => (string) ($claims->name ?? strstr($email, '@', true) ?: 'User'),
                     'email' => $email,
@@ -60,6 +58,11 @@ class GoogleAuthController extends Controller
                 ]);
             }
         }
+
+        $user->forceFill([
+            'firebase_uid' => $firebaseUid,
+            'password_auth_enabled' => false,
+        ])->save();
 
         $this->applyTimezoneFromValidated($user, $validated);
 
