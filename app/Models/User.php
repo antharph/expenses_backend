@@ -13,7 +13,7 @@ use Illuminate\Notifications\Notifiable;
 use Laravel\Fortify\TwoFactorAuthenticatable;
 use Laravel\Sanctum\HasApiTokens;
 
-#[Fillable(['name', 'email', 'password', 'firebase_uid', 'timezone'])]
+#[Fillable(['name', 'email', 'password', 'firebase_uid', 'password_auth_enabled', 'timezone'])]
 #[Hidden(['password', 'two_factor_secret', 'two_factor_recovery_codes', 'remember_token'])]
 class User extends Authenticatable
 {
@@ -30,6 +30,7 @@ class User extends Authenticatable
         return [
             'email_verified_at' => 'datetime',
             'password' => 'hashed',
+            'password_auth_enabled' => 'boolean',
             'two_factor_confirmed_at' => 'datetime',
         ];
     }
@@ -71,5 +72,18 @@ class User extends Authenticatable
     public function budgets(): HasMany
     {
         return $this->hasMany(Budget::class);
+    }
+
+    /**
+     * @return array{id: int, name: string, email: string, password_auth_enabled: bool}
+     */
+    public function toApiArray(): array
+    {
+        return [
+            'id' => $this->id,
+            'name' => $this->name,
+            'email' => $this->email,
+            'password_auth_enabled' => (bool) $this->password_auth_enabled,
+        ];
     }
 }

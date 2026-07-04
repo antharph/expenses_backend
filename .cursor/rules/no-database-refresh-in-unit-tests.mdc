@@ -1,0 +1,47 @@
+---
+description: Do not use RefreshDatabase or any DB-wiping patterns in unit tests
+globs: tests/Unit/**/*.php,tests/**/*Test.php
+alwaysApply: false
+---
+
+# Unit tests — no database refresh or table clearing
+
+**Never** use traits, helpers, or Artisan commands that wipe, truncate, or rebuild the database schema/data in **`tests/Unit`** (or any test marketed as a unit test).
+
+## Forbidden
+
+- `Illuminate\Foundation\Testing\RefreshDatabase`
+- `Illuminate\Foundation\Testing\DatabaseMigrations`
+- `Illuminate\Foundation\Testing\LazilyRefreshDatabase`
+- `migrate:fresh`, `migrate:refresh`, `db:wipe`, or manual `Schema::drop*` / `TRUNCATE` in test setup
+- `Model::truncate()` or deleting all rows from shared tables in `setUp` / `tearDown`
+
+## Required approach
+
+- **Pure unit tests:** exercise services, rules, and helpers with **mocks, stubs, and fakes** — no Eloquent persistence, no HTTP kernel, no `TestCase` database bootstrapping.
+- **When persistence is unavoidable:** create only the rows the test needs, assert behavior, then **delete those specific records** (or roll back via a narrow transaction scoped to the test) — never reset the whole database.
+- Prefer testing domain logic in isolation (`PHPUnit\Framework\TestCase` or a thin project base) instead of `Tests\TestCase` + factories when no Laravel container is required.
+
+## Examples
+
+```php
+// BAD — wipes all tables between tests
+class BudgetServiceTest extends TestCase
+{
+    use RefreshDatabase;
+}
+
+// GOOD — mock dependencies, no DB
+class BudgetServiceTest extends TestCase
+{
+    public function test_period_boundary_uses_user_timezone(): void
+    {
+        $user = Mockery::mock(User::class);
+        // ...
+    }
+}
+```
+
+## Feature / integration tests
+
+`tests/Feature` is separate from unit tests. Still **do not** add `RefreshDatabase` or global table clearing there unless the team explicitly changes this rule. Prefer targeted record creation and cleanup.

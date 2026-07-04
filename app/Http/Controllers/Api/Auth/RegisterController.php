@@ -25,6 +25,7 @@ class RegisterController extends Controller
             'name' => $validated['name'],
             'email' => $validated['email'],
             'password' => Hash::make($validated['password']),
+            'password_auth_enabled' => true,
             'timezone' => User::normalizeTimezone($validated['timezone'] ?? null),
         ]);
 
@@ -34,11 +35,7 @@ class RegisterController extends Controller
             'message' => 'Registered successfully.',
             'token' => $token,
             'token_type' => 'Bearer',
-            'user' => [
-                'id' => $user->id,
-                'name' => $user->name,
-                'email' => $user->email,
-            ],
+            'user' => $user->toApiArray(),
         ], 201);
     }
 }

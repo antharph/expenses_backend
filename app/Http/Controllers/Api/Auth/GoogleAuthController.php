@@ -54,6 +54,7 @@ class GoogleAuthController extends Controller
                     'email' => $email,
                     'password' => Hash::make(Str::password(32)),
                     'firebase_uid' => $firebaseUid,
+                    'password_auth_enabled' => false,
                     'email_verified_at' => ($claims->email_verified ?? false) ? now() : null,
                     'timezone' => User::normalizeTimezone($request->input('timezone')),
                 ]);
@@ -68,11 +69,7 @@ class GoogleAuthController extends Controller
             'message' => 'Signed in with Google successfully.',
             'token' => $token,
             'token_type' => 'Bearer',
-            'user' => [
-                'id' => $user->id,
-                'name' => $user->name,
-                'email' => $user->email,
-            ],
+            'user' => $user->toApiArray(),
         ]);
     }
 }

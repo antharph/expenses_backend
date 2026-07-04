@@ -14,11 +14,7 @@ class DashboardController extends Controller
 
         return response()->json([
             'message' => 'Welcome',
-            'user' => [
-                'id' => $user->id,
-                'name' => $user->name,
-                'email' => $user->email,
-            ],
+            'user' => $user->toApiArray(),
         ]);
     }
 }
