@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\Api\Auth\FirebaseAuthController;
 use App\Http\Controllers\Api\Auth\GoogleAuthController;
 use App\Http\Controllers\Api\Auth\LoginController;
 use App\Http\Controllers\Api\Auth\LogoutController;
@@ -16,6 +17,7 @@ use Illuminate\Support\Facades\Route;
 Route::prefix('v1')->group(function (): void {
     Route::post('/register', RegisterController::class);
     Route::post('/login', LoginController::class);
+    Route::post('/auth/firebase', FirebaseAuthController::class);
     Route::post('/auth/google', GoogleAuthController::class);
 
     Route::middleware('auth:sanctum')->group(function (): void {

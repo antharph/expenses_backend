@@ -13,7 +13,8 @@ Auth and dashboard responses include a `user` object:
 | `id` | integer | User ID |
 | `name` | string | Display name |
 | `email` | string | Email address |
-| `password_auth_enabled` | boolean | `true` for email/password accounts; `false` for Google-only sign-in (password change unavailable) |
+| `password_auth_enabled` | boolean | `true` when the user can change password in the app; `false` for social-only accounts |
+| `auth_provider` | string | `email`, `google`, `apple`, or `facebook` — used for Account security messaging when `password_auth_enabled` is `false` |
 
 ---
 
@@ -42,7 +43,8 @@ Creates a user and returns a Sanctum token.
     "id": 1,
     "name": "Ada Lovelace",
     "email": "ada@example.com",
-    "password_auth_enabled": true
+    "password_auth_enabled": true,
+    "auth_provider": "email"
   }
 }
 ```
@@ -69,7 +71,26 @@ Authenticates with email and password and returns a Sanctum token.
 
 ---
 
+## POST `/api/v1/auth/firebase`
+
+Exchanges a **Firebase Auth ID token** (from `FirebaseAuth.instance.currentUser.getIdToken()` after Google, Apple, or Facebook sign-in on the client) for a Sanctum token. The backend reads `firebase.sign_in_provider` from the verified JWT to set `user.auth_provider`.
+
+**Body**
+
+| Field | Type | Rules |
+| --- | --- | --- |
+| `id_token` | string | Required; Firebase JWT |
+| `timezone` | string | Optional. IANA timezone identifier (e.g. `Asia/Manila`). Applied on sign-up and updated on later sign-ins when sent. When omitted on create, defaults to `UTC`. |
+
+**200 OK** — same envelope as login (`message`, `token`, `token_type`, `user`). If the email already exists and `password_auth_enabled` is `true`, the account is linked by storing `firebase_uid` without disabling in-app password changes.
+
+**422** — invalid or unverifiable token, missing email claim, unsupported sign-in provider, or misconfigured `FIREBASE_PROJECT_ID`.
+
+---
+
 ## POST `/api/v1/auth/google`
+
+**Deprecated.** Alias for `POST /api/v1/auth/firebase`. Existing clients may continue using this path during transition.
 
 Exchanges a **Firebase Auth ID token** (from `FirebaseAuth.instance.currentUser.getIdToken()` after Google sign-in on the client) for a Sanctum token.
 
@@ -80,7 +101,7 @@ Exchanges a **Firebase Auth ID token** (from `FirebaseAuth.instance.currentUser.
 | `id_token` | string | Required; Firebase JWT |
 | `timezone` | string | Optional. IANA timezone identifier (e.g. `Asia/Manila`). Applied on sign-up and updated on later sign-ins when sent. When omitted on create, defaults to `UTC`. |
 
-**200 OK** — same envelope as login (`message`, `token`, `token_type`, `user`). If the email already exists, the account is linked by storing `firebase_uid`.
+**200 OK** — same envelope as login (`message`, `token`, `token_type`, `user`). If the email already exists and `password_auth_enabled` is `true`, the account is linked by storing `firebase_uid` without disabling in-app password changes.
 
 **422** — invalid or unverifiable token, missing email claim, or misconfigured `FIREBASE_PROJECT_ID`.
 
@@ -103,7 +124,8 @@ Returns the welcome payload for the authenticated user.
     "id": 1,
     "name": "Ada Lovelace",
     "email": "ada@example.com",
-    "password_auth_enabled": true
+    "password_auth_enabled": true,
+    "auth_provider": "email"
   }
 }
 ```
@@ -135,7 +157,8 @@ Updates the authenticated user's display name.
     "id": 1,
     "name": "Ada Lovelace",
     "email": "ada@example.com",
-    "password_auth_enabled": true
+    "password_auth_enabled": true,
+    "auth_provider": "email"
   }
 }
 ```

@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Api\Auth;
 
+use App\Enums\AuthProvider;
 use App\Http\Controllers\Controller;
 use App\Models\User;
 use App\Rules\IanaTimezone;
@@ -26,6 +27,7 @@ class RegisterController extends Controller
             'email' => $validated['email'],
             'password' => Hash::make($validated['password']),
             'password_auth_enabled' => true,
+            'auth_provider' => AuthProvider::Email->value,
             'timezone' => User::normalizeTimezone($validated['timezone'] ?? null),
         ]);
 

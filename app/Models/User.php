@@ -2,8 +2,7 @@
 
 namespace App\Models;
 
-// use Illuminate\Contracts\Auth\MustVerifyEmail;
-use Database\Factories\UserFactory;
+use App\Enums\AuthProvider;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Attributes\Hidden;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
@@ -13,7 +12,7 @@ use Illuminate\Notifications\Notifiable;
 use Laravel\Fortify\TwoFactorAuthenticatable;
 use Laravel\Sanctum\HasApiTokens;
 
-#[Fillable(['name', 'email', 'password', 'firebase_uid', 'password_auth_enabled', 'timezone'])]
+#[Fillable(['name', 'email', 'password', 'firebase_uid', 'password_auth_enabled', 'auth_provider', 'timezone'])]
 #[Hidden(['password', 'two_factor_secret', 'two_factor_recovery_codes', 'remember_token'])]
 class User extends Authenticatable
 {
@@ -75,7 +74,7 @@ class User extends Authenticatable
     }
 
     /**
-     * @return array{id: int, name: string, email: string, password_auth_enabled: bool}
+     * @return array{id: int, name: string, email: string, password_auth_enabled: bool, auth_provider: string}
      */
     public function toApiArray(): array
     {
@@ -84,6 +83,18 @@ class User extends Authenticatable
             'name' => $this->name,
             'email' => $this->email,
             'password_auth_enabled' => (bool) $this->password_auth_enabled,
+            'auth_provider' => $this->authProviderValue(),
         ];
+    }
+
+    public function authProviderValue(): string
+    {
+        $provider = $this->auth_provider;
+
+        if (is_string($provider) && $provider !== '') {
+            return $provider;
+        }
+
+        return AuthProvider::Email->value;
     }
 }
