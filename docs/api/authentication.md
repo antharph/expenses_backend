@@ -16,6 +16,8 @@ Auth and dashboard responses include a `user` object:
 | `password_auth_enabled` | boolean | `true` when the user can change password in the app; `false` for social-only accounts |
 | `auth_provider` | string | `email`, `google`, `apple`, or `facebook` — used for Account security messaging when `password_auth_enabled` is `false` |
 
+See [auth-providers.md](../auth-providers.md) for linking rules, Firebase provider mapping, and Flutter behavior.
+
 ---
 
 ## POST `/api/v1/register`
