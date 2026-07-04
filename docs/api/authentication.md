@@ -14,7 +14,7 @@ Creates a user and returns a Sanctum token.
 | --- | --- | --- |
 | `name` | string | Required, max 255 |
 | `email` | string | Required, valid email, unique |
-| `password` | string | Required, Laravel default password rules, must match confirmation |
+| `password` | string | Required, minimum 6 characters, must match confirmation |
 | `password_confirmation` | string | Required, must equal `password` |
 | `timezone` | string | Optional. IANA timezone identifier (e.g. `Asia/Manila`). When omitted, defaults to `UTC`. |
 
