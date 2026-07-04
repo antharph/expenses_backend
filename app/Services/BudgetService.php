@@ -24,13 +24,13 @@ class BudgetService
         return $this->calculateFixedDateFor($resetDays, Carbon::now());
     }
 
-    public function calculateInterval(Carbon $startDate, int $days): Carbon
+    public function calculateInterval(CarbonInterface $startDate, int $days): Carbon
     {
         if ($days < 1) {
             throw new InvalidArgumentException('Interval days must be at least 1.');
         }
 
-        $periodStart = $startDate->copy()->startOfDay();
+        $periodStart = $this->asMutableCarbon($startDate)->startOfDay();
         $now = Carbon::now($periodStart->timezone)->startOfDay();
 
         while ($periodStart->copy()->addDays($days)->lessThanOrEqualTo($now)) {
@@ -57,6 +57,45 @@ class BudgetService
             ),
             BudgetResetType::Manual => $this->manualStartDate($budget)->timezone($timezone)->startOfDay(),
         };
+    }
+
+    /**
+     * Ordered period start dates from the budget anchor through the current period (inclusive).
+     *
+     * @return list<Carbon>
+     */
+    public function collectPeriodStarts(Budget $budget): array
+    {
+        $budget->loadMissing('user');
+
+        $resetType = $this->resetType($budget);
+
+        if ($resetType === BudgetResetType::Manual) {
+            return [];
+        }
+
+        $timezone = $budget->user?->displayTimezone() ?? 'UTC';
+        $currentStart = $this->getCurrentPeriodStart($budget)
+            ->timezone($timezone)
+            ->startOfDay();
+
+        return match ($resetType) {
+            BudgetResetType::Interval => $this->collectIntervalPeriodStarts($budget, $currentStart, $timezone),
+            BudgetResetType::DateFixed => $this->collectFixedPeriodStarts($budget, $currentStart, $timezone),
+        };
+    }
+
+    public function getPeriodEndDate(Budget $budget, CarbonInterface $periodStart): ?Carbon
+    {
+        return $this->getNextEndDate($budget, $periodStart);
+    }
+
+    /**
+     * Persist a local calendar instant as UTC for budget_logs datetime columns.
+     */
+    public function storeLogBoundary(CarbonInterface $instant): Carbon
+    {
+        return $this->asMutableCarbon($instant)->utc();
     }
 
     /**
@@ -205,9 +244,11 @@ class BudgetService
             ? $this->formatMoney((float) $budget->amount + $rolloverAmount)
             : null;
 
+        $periodEnd = $this->getNextEndDate($budget, $startDate);
+
         return $budget->logs()->create([
-            'start_date' => $startDate,
-            'end_date' => $this->getNextEndDate($budget, $startDate),
+            'start_date' => $this->storeLogBoundary($startDate),
+            'end_date' => $periodEnd !== null ? $this->storeLogBoundary($periodEnd) : null,
             'allocated_amount' => $allocatedAmount,
             'actual_spent' => '0.00',
         ]);
@@ -220,7 +261,7 @@ class BudgetService
         $periodStart = Carbon::parse($startDate->toDateString(), $timezone)->startOfDay();
 
         return $budget->logs()->create([
-            'start_date' => $periodStart,
+            'start_date' => $this->storeLogBoundary($periodStart),
             'end_date' => null,
             'allocated_amount' => $budget->amount !== null
                 ? $this->formatMoney($budget->amount)
@@ -266,7 +307,7 @@ class BudgetService
                 : null;
 
             return $budget->logs()->create([
-                'start_date' => $startDate,
+                'start_date' => $this->storeLogBoundary($startDate),
                 'end_date' => null,
                 'allocated_amount' => $allocatedAmount,
                 'actual_spent' => '0.00',
@@ -292,9 +333,11 @@ class BudgetService
                 return $existingLog;
             }
 
+            $periodEnd = $this->getNextEndDate($budget, $periodStart);
+
             return $budget->logs()->create([
-                'start_date' => $periodStart,
-                'end_date' => $this->getNextEndDate($budget, $periodStart),
+                'start_date' => $this->storeLogBoundary($periodStart),
+                'end_date' => $periodEnd !== null ? $this->storeLogBoundary($periodEnd) : null,
                 'allocated_amount' => $budget->amount !== null
                     ? $this->formatMoney($budget->amount)
                     : null,
@@ -319,7 +362,7 @@ class BudgetService
         $timezone = $budget->user?->displayTimezone() ?? 'UTC';
 
         if ($lastLog !== null) {
-            $lastPeriodStart = $lastLog->start_date->copy()->timezone($timezone)->startOfDay();
+            $lastPeriodStart = $this->logPeriodStart($budget, $lastLog);
 
             $nextReset = $this->nextResetDate($budget, $lastPeriodStart);
             if ($nextReset !== null) {
@@ -355,9 +398,7 @@ class BudgetService
             }
 
             $currentPeriodStart = $this->getCurrentPeriodStart($budget)->startOfDay();
-            $lastPeriodStart = $lastLog->start_date->copy()
-                ->timezone($currentPeriodStart->timezone)
-                ->startOfDay();
+            $lastPeriodStart = $this->logPeriodStart($budget, $lastLog);
 
             if ($lastPeriodStart->greaterThanOrEqualTo($currentPeriodStart)) {
                 return $lastLog;
@@ -380,9 +421,11 @@ class BudgetService
                 ? $this->formatMoney((float) $budget->amount + $rolloverAmount)
                 : null;
 
+            $periodEnd = $this->getNextEndDate($budget, $currentPeriodStart);
+
             return $budget->logs()->create([
-                'start_date' => $currentPeriodStart,
-                'end_date' => $this->getNextEndDate($budget, $currentPeriodStart),
+                'start_date' => $this->storeLogBoundary($currentPeriodStart),
+                'end_date' => $periodEnd !== null ? $this->storeLogBoundary($periodEnd) : null,
                 'allocated_amount' => $allocatedAmount,
                 'actual_spent' => '0.00',
             ]);
@@ -392,7 +435,7 @@ class BudgetService
     /**
      * True when one or more automatic periods were skipped between the latest log and now.
      */
-    private function hasMissedCycles(Budget $budget, BudgetLog $lastLog, Carbon $currentPeriodStart): bool
+    private function hasMissedCycles(Budget $budget, BudgetLog $lastLog, CarbonInterface $currentPeriodStart): bool
     {
         $immediateNextPeriodStart = $this->getNextStartDate($budget, $lastLog)
             ->timezone($currentPeriodStart->timezone)
@@ -413,9 +456,9 @@ class BudgetService
 
         $budget->loadMissing('user');
         $timezone = $budget->user?->displayTimezone() ?? 'UTC';
-        $startDate = $log->start_date->copy();
-        $periodEnd = $log->end_date?->copy()
-            ?? $this->getNextEndDate($budget, $log->start_date->copy());
+        $periodStart = $this->logPeriodStart($budget, $log);
+        $startDate = $this->storeLogBoundary($periodStart);
+        $periodEnd = $this->getNextEndDate($budget, $periodStart) ?? $log->end_date?->copy();
         $nowEnd = Carbon::now($timezone)->endOfDay();
         $queryEndDate = $periodEnd !== null && $periodEnd->lessThan($nowEnd)
             ? $periodEnd
@@ -446,12 +489,8 @@ class BudgetService
         $currentPeriodStart = $this->getCurrentPeriodStart($budget)
             ->timezone($timezone)
             ->startOfDay();
-        $logPeriodStart = $log->start_date
-            ->copy()
-            ->timezone($timezone)
-            ->startOfDay();
 
-        return $logPeriodStart->equalTo($currentPeriodStart);
+        return $this->logPeriodStart($budget, $log)->equalTo($currentPeriodStart);
     }
 
     private function finalizeLogSpend(Budget $budget, BudgetLog $log): BudgetLog
@@ -460,13 +499,16 @@ class BudgetService
             return $log;
         }
 
-        $endDate = $log->end_date?->copy()
-            ?? $this->getNextEndDate($budget, $log->start_date->copy())
-            ?? Carbon::now($log->start_date->timezone)->endOfDay();
+        $budget->loadMissing('user');
+        $timezone = $budget->user?->displayTimezone() ?? 'UTC';
+        $periodStart = $this->logPeriodStart($budget, $log);
+        $startDate = $this->storeLogBoundary($periodStart);
+        $computedEnd = $this->getNextEndDate($budget, $periodStart)
+            ?? Carbon::now($timezone)->endOfDay();
 
         $log->forceFill([
-            'end_date' => $endDate,
-            'actual_spent' => $this->budgetSpentBetween($budget, $log->start_date->copy(), $endDate),
+            'end_date' => $this->storeLogBoundary($computedEnd),
+            'actual_spent' => $this->budgetSpentBetween($budget, $startDate, $computedEnd),
         ])->save();
 
         $log->categories()->sync($budget->categories->pluck('id')->all());
@@ -474,7 +516,7 @@ class BudgetService
         return $log->refresh();
     }
 
-    private function budgetSpentBetween(Budget $budget, CarbonInterface $startDate, CarbonInterface $endDate): string
+    public function budgetSpentBetween(Budget $budget, CarbonInterface $startDate, CarbonInterface $endDate): string
     {
         $budget->loadMissing('categories:id');
         $categoryIds = $budget->categories->pluck('id');
@@ -493,15 +535,62 @@ class BudgetService
         );
     }
 
-    private function getNextEndDate(Budget $budget, Carbon $periodStart): ?Carbon
+    private function getNextEndDate(Budget $budget, CarbonInterface $periodStart): ?Carbon
     {
         return $this->nextResetDate($budget, $periodStart)?->copy()->subDay()->endOfDay();
     }
 
     /**
+     * @return list<Carbon>
+     */
+    private function collectIntervalPeriodStarts(Budget $budget, CarbonInterface $currentStart, string $timezone): array
+    {
+        $anchor = $this->asMutableCarbon($budget->created_at)->timezone($timezone)->startOfDay();
+        $days = $this->intervalDays($budget);
+        $starts = [];
+        $periodStart = $anchor;
+        $currentStart = $this->asMutableCarbon($currentStart)->timezone($timezone)->startOfDay();
+
+        while ($periodStart->lessThanOrEqualTo($currentStart)) {
+            $starts[] = $periodStart->copy();
+            $periodStart = $periodStart->copy()->addDays($days);
+        }
+
+        return $starts;
+    }
+
+    /**
+     * @return list<Carbon>
+     */
+    private function collectFixedPeriodStarts(Budget $budget, CarbonInterface $currentStart, string $timezone): array
+    {
+        $resetDays = $this->resetDays($budget);
+        $anchor = $this->asMutableCarbon($budget->created_at)->timezone($timezone)->startOfDay();
+        $month = $anchor->copy()->startOfMonth();
+        $starts = [];
+        $currentStart = $this->asMutableCarbon($currentStart)->timezone($timezone)->startOfDay();
+
+        for ($i = 0; $i < 1200; $i++) {
+            foreach ($this->fixedResetDatesForMonth($resetDays, $month->copy()->addMonthsNoOverflow($i)) as $candidate) {
+                if ($candidate->lessThan($anchor)) {
+                    continue;
+                }
+
+                if ($candidate->greaterThan($currentStart)) {
+                    return array_values($starts);
+                }
+
+                $starts[$candidate->format('Y-m-d')] = $candidate->copy();
+            }
+        }
+
+        return array_values($starts);
+    }
+
+    /**
      * @param  array<int, int|string>  $resetDays
      */
-    private function calculateFixedDateFor(array $resetDays, Carbon $now): Carbon
+    private function calculateFixedDateFor(array $resetDays, CarbonInterface $now): Carbon
     {
         $today = $now->copy()->startOfDay();
 
@@ -514,7 +603,7 @@ class BudgetService
         return array_reverse($this->fixedResetDatesForMonth($resetDays, $today->copy()->subMonthNoOverflow()))[0];
     }
 
-    private function nextResetDate(Budget $budget, Carbon $periodStart): ?Carbon
+    private function nextResetDate(Budget $budget, CarbonInterface $periodStart): ?Carbon
     {
         return match ($this->resetType($budget)) {
             BudgetResetType::DateFixed => $this->nextFixedResetDate($this->resetDays($budget), $periodStart),
@@ -526,7 +615,7 @@ class BudgetService
     /**
      * @param  array<int, int|string>  $resetDays
      */
-    private function nextFixedResetDate(array $resetDays, Carbon $periodStart): Carbon
+    private function nextFixedResetDate(array $resetDays, CarbonInterface $periodStart): Carbon
     {
         $month = $periodStart->copy()->startOfMonth();
 
@@ -545,7 +634,7 @@ class BudgetService
      * @param  array<int, int|string>  $resetDays
      * @return list<Carbon>
      */
-    private function fixedResetDatesForMonth(array $resetDays, Carbon $month): array
+    private function fixedResetDatesForMonth(array $resetDays, CarbonInterface $month): array
     {
         $dates = [];
 
@@ -640,5 +729,15 @@ class BudgetService
         return $date instanceof Carbon
             ? $date->copy()
             : Carbon::instance($date);
+    }
+
+    private function logPeriodStart(Budget $budget, BudgetLog $log): Carbon
+    {
+        $budget->loadMissing('user');
+        $timezone = $budget->user?->displayTimezone() ?? 'UTC';
+
+        return $this->asMutableCarbon($log->start_date)
+            ->timezone($timezone)
+            ->startOfDay();
     }
 }

@@ -6,6 +6,7 @@ namespace App\Http\Resources;
 
 use App\Models\BudgetLog;
 use App\Services\BudgetService;
+use Carbon\Carbon;
 use Carbon\CarbonInterface;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
@@ -56,6 +57,8 @@ class BudgetLogResource extends JsonResource
             return null;
         }
 
-        return $date->copy()->timezone($timezone)->toDateString();
+        return Carbon::parse($date->format('Y-m-d H:i:s'), 'UTC')
+            ->timezone($timezone)
+            ->toDateString();
     }
 }

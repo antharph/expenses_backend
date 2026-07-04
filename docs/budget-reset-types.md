@@ -60,6 +60,31 @@ The `Budget` model casts `reset_days` to `array` when loaded from the database. 
 - Rollover on sync applies only when advancing to the immediate next period (no skipped cycles between the latest log and the current period).
 - `manual` budgets are not automatically advanced once they already have a log.
 
+### Dev history backfill
+
+Runtime sync does not create logs for missed periods. For local/dev databases with existing `interval` or `date_fixed` budgets, run the standalone seeder for a **specific user**:
+
+```bash
+php artisan budget:seed-log-history {userId}
+```
+
+Example:
+
+```bash
+php artisan budget:seed-log-history 1
+```
+
+Inside Docker, execute PHP in the Laravel container (see `.cursor/mcp.json` for the container name and `artisan` path).
+
+The seeder:
+
+- Requires a **user ID** and only affects that user's budgets.
+- Applies only to **`interval`** and **`date_fixed`** budgets (`manual` is skipped).
+- Creates or updates one `budget_logs` row per period from the budget anchor through the current period.
+- Finalizes closed periods with `actual_spent` from linked category expenses and syncs `budget_log_category`.
+- Is **idempotent** (safe to re-run); do **not** call `sync-cycles` immediately after seeding.
+- `budget_logs` period boundaries are stored as UTC instants; re-run the seeder after timezone-related fixes to rewrite existing rows.
+
 ---
 
 ## Rollover (optional)
