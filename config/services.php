@@ -48,4 +48,14 @@ return [
         'project_id' => env('FIREBASE_PROJECT_ID'),
     ],
 
+    /*
+    |--------------------------------------------------------------------------
+    | Apple Sign In (direct identity tokens — iOS bundle ID + Android Services ID)
+    |--------------------------------------------------------------------------
+    */
+    'apple' => [
+        'bundle_id' => env('APPLE_BUNDLE_ID', 'com.maiexpenses.app'),
+        'services_id' => env('APPLE_SERVICES_ID', 'com.maiexpenses.service'),
+    ],
+
 ];
