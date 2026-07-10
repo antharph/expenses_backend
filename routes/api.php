@@ -11,6 +11,7 @@ use App\Http\Controllers\Api\BudgetTypeController;
 use App\Http\Controllers\Api\CategoryController;
 use App\Http\Controllers\Api\DashboardController;
 use App\Http\Controllers\Api\ExpenseController;
+use App\Http\Controllers\Api\UserAccountController;
 use App\Http\Controllers\Api\UserPasswordController;
 use App\Http\Controllers\Api\UserProfileController;
 use Illuminate\Support\Facades\Route;
@@ -26,6 +27,7 @@ Route::prefix('v1')->group(function (): void {
         Route::get('/dashboard', DashboardController::class);
         Route::patch('/user/profile', [UserProfileController::class, 'update']);
         Route::put('/user/password', [UserPasswordController::class, 'update']);
+        Route::delete('/user/account', [UserAccountController::class, 'destroy']);
         Route::post('/logout', LogoutController::class);
         Route::get('/categories', [CategoryController::class, 'index']);
         Route::get('/budget-types', [BudgetTypeController::class, 'index']);

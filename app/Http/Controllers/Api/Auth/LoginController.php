@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Api\Auth;
 
 use App\Http\Controllers\Api\Auth\Concerns\PersistsUserTimezone;
+use App\Http\Controllers\Api\Auth\Concerns\RejectsDeletedAccounts;
 use App\Http\Controllers\Controller;
 use App\Models\User;
 use App\Rules\IanaTimezone;
@@ -14,6 +15,7 @@ use Illuminate\Validation\ValidationException;
 class LoginController extends Controller
 {
     use PersistsUserTimezone;
+    use RejectsDeletedAccounts;
 
     public function __invoke(Request $request): JsonResponse
     {
@@ -24,6 +26,8 @@ class LoginController extends Controller
         ]);
 
         $user = User::query()->where('email', $validated['email'])->first();
+
+        $this->rejectIfDeletedAccount($user);
 
         if (! $user || ! Hash::check($validated['password'], $user->password)) {
             throw ValidationException::withMessages([

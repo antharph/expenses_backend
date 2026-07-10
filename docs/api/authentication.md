@@ -218,3 +218,37 @@ Revokes the **current** Sanctum token (the one sent in `Authorization`).
 ```
 
 **401** — missing or invalid token.
+
+---
+
+## DELETE `/api/v1/user/account`
+
+Permanently deletes the authenticated user's account. The user row is retained as an anonymized tombstone (`deleted-{id}-{email}`) so historical expenses and budgets remain in the database, but all Sanctum tokens are revoked and the account can no longer be used to sign in.
+
+For users linked to Firebase Auth (Google sign-in via Firebase), the backend also deletes the Firebase user when `FIREBASE_CREDENTIALS` is configured.
+
+**Headers**
+
+- `Authorization: Bearer {token}`
+
+**Body**
+
+| Field | Type | Rules |
+| --- | --- | --- |
+| `password` | string | Required when `user.password_auth_enabled` is `true`; must match the current password |
+
+Social-only accounts (`password_auth_enabled` is `false`) do not require a password.
+
+**200 OK**
+
+```json
+{
+  "message": "Account deleted."
+}
+```
+
+**401** — missing or invalid token.
+
+**422** — validation errors (e.g. missing or wrong `password` for email accounts).
+
+**503** — Firebase Admin credentials are not configured when Firebase user deletion is required.

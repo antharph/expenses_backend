@@ -2,6 +2,8 @@
 
 namespace App\Providers;
 
+use App\Contracts\DeletesFirebaseUsers;
+use App\Services\FirebaseUserDeleter;
 use App\Services\ReceiptImageCompressor;
 use Carbon\CarbonImmutable;
 use Illuminate\Support\Facades\Date;
@@ -16,6 +18,8 @@ class AppServiceProvider extends ServiceProvider
      */
     public function register(): void
     {
+        $this->app->bind(DeletesFirebaseUsers::class, FirebaseUserDeleter::class);
+
         $this->app->singleton(ReceiptImageCompressor::class, function () {
             return new ReceiptImageCompressor(
                 maxWidth: (int) config('gemini.image_max_width', 800),

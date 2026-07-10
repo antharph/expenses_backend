@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Api\Auth;
 
 use App\Enums\AuthProvider;
 use App\Http\Controllers\Api\Auth\Concerns\PersistsUserTimezone;
+use App\Http\Controllers\Api\Auth\Concerns\RejectsDeletedAccounts;
 use App\Http\Controllers\Controller;
 use App\Models\User;
 use App\Rules\IanaTimezone;
@@ -18,6 +19,7 @@ use InvalidArgumentException;
 class AppleAuthController extends Controller
 {
     use PersistsUserTimezone;
+    use RejectsDeletedAccounts;
 
     public function __invoke(
         Request $request,
@@ -54,8 +56,16 @@ class AppleAuthController extends Controller
 
         $user = User::query()->where('firebase_uid', $appleUid)->first();
 
+        if ($user) {
+            $this->rejectIfDeletedAccount($user);
+        }
+
         if (! $user) {
             $user = User::query()->where('email', $email)->first();
+
+            if ($user) {
+                $this->rejectIfDeletedAccount($user);
+            }
 
             if (! $user) {
                 $user = User::query()->create([

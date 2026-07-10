@@ -97,4 +97,14 @@ class User extends Authenticatable
 
         return AuthProvider::Email->value;
     }
+
+    public function isDeletedAccount(): bool
+    {
+        return str_starts_with($this->email, 'deleted-');
+    }
+
+    public static function tombstoneEmail(int $id, string $email): string
+    {
+        return 'deleted-'.$id.'-'.$email;
+    }
 }
