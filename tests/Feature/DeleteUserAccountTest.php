@@ -4,15 +4,12 @@ namespace Tests\Feature;
 
 use App\Contracts\DeletesFirebaseUsers;
 use App\Models\User;
-use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Hash;
 use Laravel\Sanctum\Sanctum;
 use Tests\TestCase;
 
 class DeleteUserAccountTest extends TestCase
 {
-    use RefreshDatabase;
-
     public function test_email_user_can_delete_account_with_password(): void
     {
         $this->app->instance(DeletesFirebaseUsers::class, new class implements DeletesFirebaseUsers

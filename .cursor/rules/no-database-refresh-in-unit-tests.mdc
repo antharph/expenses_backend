@@ -1,12 +1,12 @@
 ---
-description: Do not use RefreshDatabase or any DB-wiping patterns in unit tests
-globs: tests/Unit/**/*.php,tests/**/*Test.php
-alwaysApply: false
+description: Do not use RefreshDatabase or any DB-wiping patterns in tests
+globs: tests/**/*.php
+alwaysApply: true
 ---
 
-# Unit tests — no database refresh or table clearing
+# Tests — no database refresh or table clearing
 
-**Never** use traits, helpers, or Artisan commands that wipe, truncate, or rebuild the database schema/data in **`tests/Unit`** (or any test marketed as a unit test).
+**Never** use traits, helpers, or Artisan commands that wipe, truncate, or rebuild the database schema/data in any test.
 
 ## Forbidden
 
@@ -18,30 +18,9 @@ alwaysApply: false
 
 ## Required approach
 
-- **Pure unit tests:** exercise services, rules, and helpers with **mocks, stubs, and fakes** — no Eloquent persistence, no HTTP kernel, no `TestCase` database bootstrapping.
-- **When persistence is unavoidable:** create only the rows the test needs, assert behavior, then **delete those specific records** (or roll back via a narrow transaction scoped to the test) — never reset the whole database.
-- Prefer testing domain logic in isolation (`PHPUnit\Framework\TestCase` or a thin project base) instead of `Tests\TestCase` + factories when no Laravel container is required.
+- **Pure unit tests:** extend `PHPUnit\Framework\TestCase`; use mocks/stubs — no Eloquent persistence.
+- **HTTP / Eloquent tests:** extend `Tests\TestCase` (uses `DatabaseTransactions` + `TestDatabaseGuard`).
+- When persistence is unavoidable, create only the rows the test needs; transactions roll back automatically.
+- Never point tests at the development database (`expenses`). Use sqlite `:memory:` (default) or a `*_test` MySQL database.
 
-## Examples
-
-```php
-// BAD — wipes all tables between tests
-class BudgetServiceTest extends TestCase
-{
-    use RefreshDatabase;
-}
-
-// GOOD — mock dependencies, no DB
-class BudgetServiceTest extends TestCase
-{
-    public function test_period_boundary_uses_user_timezone(): void
-    {
-        $user = Mockery::mock(User::class);
-        // ...
-    }
-}
-```
-
-## Feature / integration tests
-
-`tests/Feature` is separate from unit tests. Still **do not** add `RefreshDatabase` or global table clearing there unless the team explicitly changes this rule. Prefer targeted record creation and cleanup.
+See `tests/README.md` and `tests/TestDatabaseGuard.php`.

@@ -8,14 +8,11 @@ use App\Models\Budget;
 use App\Models\User;
 use App\Services\BudgetService;
 use Carbon\Carbon;
-use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\Request;
 use Tests\TestCase;
 
 class BudgetServicePeriodBoundaryTest extends TestCase
 {
-    use RefreshDatabase;
-
     protected function tearDown(): void
     {
         Carbon::setTestNow();

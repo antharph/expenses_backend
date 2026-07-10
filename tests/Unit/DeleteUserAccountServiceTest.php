@@ -7,7 +7,7 @@ use App\Models\User;
 use App\Services\DeleteUserAccountService;
 use Mockery;
 use Mockery\MockInterface;
-use PHPUnit\Framework\TestCase;
+use Tests\TestCase;
 
 class DeleteUserAccountServiceTest extends TestCase
 {
