@@ -46,6 +46,15 @@ const audience = [
     'Shoppers who want receipts and spending history in one place',
     'Anyone tired of juggling notes, photos, and mental math',
 ] as const;
+
+const appStoreUrl =
+    'https://apps.apple.com/ph/app/mai-expenses-tracker/id6771236010';
+
+const appStoreBadgeBlack =
+    'https://tools.applemediaservices.com/api/badges/download-on-the-app-store/black/en-us?size=250x83&releaseDate=0';
+
+const appStoreBadgeWhite =
+    'https://tools.applemediaservices.com/api/badges/download-on-the-app-store/white/en-us?size=250x83&releaseDate=0';
 </script>
 
 <template>
@@ -91,9 +100,19 @@ const audience = [
                         purchase manually, MaiExpenses keeps your spending
                         organized in one simple app.
                     </p>
-                    <p class="mb-8 text-[#706f6c] dark:text-[#A1A09A]">
+                    <p class="mb-4 text-[#706f6c] dark:text-[#A1A09A]">
                         No spreadsheets. No guesswork. Just a clear picture of
                         what you’ve spent and what you have left.
+                    </p>
+                    <p class="mb-8">
+                        <a
+                            :href="appStoreUrl"
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            class="font-medium text-[#f53003] underline underline-offset-4 dark:text-[#FF4433]"
+                        >
+                            Download on the App Store
+                        </a>
                     </p>
 
                     <h2 class="mb-4 font-medium">Why MaiExpenses?</h2>
@@ -144,9 +163,32 @@ const audience = [
                             >
                                 MaiExpenses
                             </p>
-                            <p class="text-[#706f6c] dark:text-[#A1A09A]">
+                            <p class="mb-5 text-[#706f6c] dark:text-[#A1A09A]">
                                 Take the guesswork out of your spending.
                             </p>
+                            <a
+                                :href="appStoreUrl"
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                aria-label="Download MaiExpenses on the App Store"
+                                class="inline-block transition-opacity hover:opacity-90 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#F53003]"
+                            >
+                                <img
+                                    :src="appStoreBadgeBlack"
+                                    alt="Download on the App Store"
+                                    width="120"
+                                    height="40"
+                                    class="h-10 w-auto dark:hidden"
+                                />
+                                <img
+                                    :src="appStoreBadgeWhite"
+                                    alt=""
+                                    width="120"
+                                    height="40"
+                                    class="hidden h-10 w-auto dark:block"
+                                    aria-hidden="true"
+                                />
+                            </a>
                         </div>
 
                         <section>
@@ -191,9 +233,9 @@ const audience = [
                             </p>
                         </section>
 
-                        <p class="font-medium">
-                            Start tracking smarter today. Download MaiExpenses and
-                            take the guesswork out of your spending.
+                        <p class="font-medium text-[#706f6c] dark:text-[#A1A09A]">
+                            Start tracking smarter today—available now on the App
+                            Store.
                         </p>
                     </div>
                 </div>
