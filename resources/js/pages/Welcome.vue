@@ -78,7 +78,7 @@ const appStoreBadgeWhite =
         </header>
 
         <div
-            class="flex w-full items-center justify-center opacity-100 transition-opacity duration-750 lg:grow starting:opacity-0"
+            class="flex w-full flex-col items-center justify-center gap-6 opacity-100 transition-opacity duration-750 lg:grow starting:opacity-0"
         >
             <main
                 class="flex w-full max-w-[335px] flex-col-reverse overflow-hidden rounded-lg lg:max-w-5xl lg:flex-row"
@@ -86,6 +86,17 @@ const appStoreBadgeWhite =
                 <div
                     class="flex-1 rounded-br-lg rounded-bl-lg bg-white p-6 pb-12 text-[13px] leading-[20px] shadow-[inset_0px_0px_0px_1px_rgba(26,26,0,0.16)] lg:rounded-tl-lg lg:rounded-br-none lg:p-16 dark:bg-[#161615] dark:text-[#EDEDEC] dark:shadow-[inset_0px_0px_0px_1px_#fffaed2d]"
                 >
+                    <figure class="mb-8 overflow-hidden rounded-md">
+                        <img
+                            src="/images/mai-expenses-feature-graphic.jpg"
+                            alt="MaiExpenses app promotional banner showing the dashboard and budget features on mobile devices with the tagline 'See Where Your Money Goes'."
+                            width="1024"
+                            height="495"
+                            class="block h-auto w-full"
+                            fetchpriority="high"
+                        />
+                    </figure>
+
                     <p
                         class="mb-2 text-xs font-medium tracking-wide text-[#f53003] uppercase dark:text-[#FF4433]"
                     >
@@ -150,7 +161,7 @@ const appStoreBadgeWhite =
                 </div>
 
                 <div
-                    class="relative flex w-full shrink-0 flex-col justify-center overflow-hidden rounded-t-lg bg-[#fff2f2] p-8 lg:-ml-px lg:w-[400px] lg:rounded-t-none lg:rounded-r-lg dark:bg-[#1D0002]"
+                    class="relative flex w-full shrink-0 flex-col justify-start overflow-hidden rounded-t-lg bg-[#fff2f2] p-8 lg:-ml-px lg:w-[400px] lg:rounded-t-none lg:rounded-r-lg lg:p-16 dark:bg-[#1D0002]"
                 >
                     <div
                         class="absolute inset-0 rounded-t-lg shadow-[inset_0px_0px_0px_1px_rgba(26,26,0,0.16)] lg:rounded-t-none lg:rounded-r-lg dark:shadow-[inset_0px_0px_0px_1px_#fffaed2d]"
