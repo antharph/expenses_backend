@@ -50,11 +50,17 @@ const audience = [
 const appStoreUrl =
     'https://apps.apple.com/ph/app/mai-expenses-tracker/id6771236010';
 
+const playStoreUrl =
+    'https://play.google.com/store/apps/details?id=com.maiexpenses.app';
+
 const appStoreBadgeBlack =
     'https://tools.applemediaservices.com/api/badges/download-on-the-app-store/black/en-us?size=250x83&releaseDate=0';
 
 const appStoreBadgeWhite =
     'https://tools.applemediaservices.com/api/badges/download-on-the-app-store/white/en-us?size=250x83&releaseDate=0';
+
+const playStoreBadge =
+    'https://play.google.com/intl/en_us/badges/static/images/badges/en_badge_web_generic.png';
 </script>
 
 <template>
@@ -115,7 +121,7 @@ const appStoreBadgeWhite =
                         No spreadsheets. No guesswork. Just a clear picture of
                         what you’ve spent and what you have left.
                     </p>
-                    <p class="mb-8">
+                    <p class="mb-8 flex flex-wrap gap-x-4 gap-y-1">
                         <a
                             :href="appStoreUrl"
                             target="_blank"
@@ -123,6 +129,14 @@ const appStoreBadgeWhite =
                             class="font-medium text-[#f53003] underline underline-offset-4 dark:text-[#FF4433]"
                         >
                             Download on the App Store
+                        </a>
+                        <a
+                            :href="playStoreUrl"
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            class="font-medium text-[#f53003] underline underline-offset-4 dark:text-[#FF4433]"
+                        >
+                            Get it on Google Play
                         </a>
                     </p>
 
@@ -177,29 +191,48 @@ const appStoreBadgeWhite =
                             <p class="mb-5 text-[#706f6c] dark:text-[#A1A09A]">
                                 Take the guesswork out of your spending.
                             </p>
-                            <a
-                                :href="appStoreUrl"
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                aria-label="Download MaiExpenses on the App Store"
-                                class="inline-block transition-opacity hover:opacity-90 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#F53003]"
+                            <div
+                                class="grid w-full grid-cols-2 items-center gap-3"
                             >
-                                <img
-                                    :src="appStoreBadgeBlack"
-                                    alt="Download on the App Store"
-                                    width="120"
-                                    height="40"
-                                    class="h-10 w-auto dark:hidden"
-                                />
-                                <img
-                                    :src="appStoreBadgeWhite"
-                                    alt=""
-                                    width="120"
-                                    height="40"
-                                    class="hidden h-10 w-auto dark:block"
-                                    aria-hidden="true"
-                                />
-                            </a>
+                                <a
+                                    :href="appStoreUrl"
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    aria-label="Download MaiExpenses on the App Store"
+                                    class="block min-w-0 transition-opacity hover:opacity-90 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#F53003]"
+                                >
+                                    <img
+                                        :src="appStoreBadgeBlack"
+                                        alt="Download on the App Store"
+                                        width="120"
+                                        height="40"
+                                        class="h-10 w-auto max-w-full dark:hidden"
+                                    />
+                                    <img
+                                        :src="appStoreBadgeWhite"
+                                        alt=""
+                                        width="120"
+                                        height="40"
+                                        class="hidden h-10 w-auto max-w-full dark:block"
+                                        aria-hidden="true"
+                                    />
+                                </a>
+                                <a
+                                    :href="playStoreUrl"
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    aria-label="Get MaiExpenses on Google Play"
+                                    class="block min-w-0 transition-opacity hover:opacity-90 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#F53003]"
+                                >
+                                    <img
+                                        :src="playStoreBadge"
+                                        alt="Get it on Google Play"
+                                        width="155"
+                                        height="60"
+                                        class="h-auto w-full max-h-[52px] object-contain object-left"
+                                    />
+                                </a>
+                            </div>
                         </div>
 
                         <section>
@@ -207,9 +240,9 @@ const appStoreBadgeWhite =
                             <p class="text-[#706f6c] dark:text-[#A1A09A]">
                                 MaiExpenses is built with a modern,
                                 distraction-free interface that works beautifully
-                                on iPhone and iPad. Charts and category chips make
-                                patterns obvious at a glance—so you can adjust
-                                before the month gets away from you.
+                                on iPhone, iPad, and Android. Charts and category
+                                chips make patterns obvious at a glance—so you
+                                can adjust before the month gets away from you.
                             </p>
                         </section>
 
@@ -246,7 +279,7 @@ const appStoreBadgeWhite =
 
                         <p class="font-medium text-[#706f6c] dark:text-[#A1A09A]">
                             Start tracking smarter today—available now on the App
-                            Store.
+                            Store and Google Play.
                         </p>
                     </div>
                 </div>
